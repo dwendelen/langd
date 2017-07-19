@@ -1,0 +1,87 @@
+%{
+	#include <string>
+	#include <iostream>
+	#include <vector>
+
+
+	int yylex();
+	using namespace std;
+	
+	void yyerror(string msg) {
+		cerr << msg << endl;	
+	}
+	#define YYSTYPE vector<string>*
+	void indent(vector<string>* target, vector<string>* lines) {
+		for(string line: *lines) {
+			target->push_back("    " + line);
+		}
+	}
+%}
+%token INT PLUS MINUS TIMES LPARENT RPARENT
+%start program
+
+%%
+program:
+	expression { 
+			for(string line: *$1) {
+				cout << line << endl;
+			}
+			$$ = $1;
+		}
+	;
+expression:
+	term
+	;
+term:
+	term PLUS factor { 
+			$$ = new vector<string>(); 
+			$$->push_back("(");
+			indent($$, $1);
+			$$->push_back("+");
+			indent($$, $3);
+			$$->push_back(")");
+		}
+    | term MINUS factor {
+			$$ = new vector<string>();  
+			$$->push_back("(");
+			indent($$, $1);
+			$$->push_back("-");
+			indent($$, $3);
+			$$->push_back(")");
+		}
+	| factor
+    ;
+factor:
+	factor TIMES minusSomething { 
+			$$ = new vector<string>(); 
+			$$->push_back("(");
+			indent($$, $1);
+			$$->push_back("*");
+			indent($$, $3);
+			$$->push_back(")");
+		}
+	| minusSomething
+	;
+minusSomething:
+	MINUS smallestThing {
+			$$ = new vector<string>();  
+			$$->push_back("-(");
+			indent($$, $2);
+			$$->push_back(")");
+		}
+	| smallestThing
+	;
+smallestThing:
+	LPARENT expression RPARENT { 
+			$$ = $2;
+		}
+	| INT { 
+			$$ = new vector<string>();
+			$$->push_back((*$1)[0]);
+		}
+	;
+%%
+
+int main() {
+	return yyparse();
+}
