@@ -1,17 +1,16 @@
 %{
 	#include <vector>
 	#include <string>
-    	#include <iostream>
-	#define YYSTYPE std::vector<std::string>*
+    #include <iostream>
+    #include "ast.hpp"
+	#include "parser.hpp"
 
 	using namespace std;
 	void yyerror(char const *);
 %}
 %%
 [1-9][0-9]* 	            { 
-						        auto val = new vector<string>();
-						     val->push_back(yytext);
-						     yylval = val;
+						        yylval.integer = stoi(yytext);
 						        return INT;
 				            }
 "-"				            {	return MINUS;	    }
@@ -26,15 +25,11 @@
 "."                         {   return DOT;         }
 ","                         {   return COMMA;       }
 \"([^\"\\]|\\\"|\\\\)*\"	{ 	
-                                auto val = new vector<string>();
-						        val->push_back(yytext);
-						        yylval = val;
+						        yylval.string = new string(yytext);
 					            return STRING;	
 				            }
 [_a-zA-Z][-_a-zA-Z0-9]*     {
-                                auto val = new vector<string>();
-						        val->push_back(yytext);
-						        yylval = val;
+                                yylval.string = new string(yytext);
 					            return ID;
                             }
 [ \n\t]+                    ;
