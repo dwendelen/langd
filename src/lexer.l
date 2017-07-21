@@ -9,6 +9,8 @@
 	void yyerror(char const *);
 %}
 %%
+"def"                       {   return DEF;         }
+"let"                       {   return LET;         }
 [1-9][0-9]* 	            { 
 						        yylval.integer = stoi(yytext);
 						        return INT;

@@ -16,7 +16,7 @@ set(SRC
     src/main.cpp
     src/ast.cpp
     src/printer.cpp
-    src/symbol_table.cpp
+    #src/java_printer.cpp
 )
 
 include_directories(

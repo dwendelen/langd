@@ -8,9 +8,9 @@
 	int yylex();
 	Program* parsedProgram;
 	using namespace std;
-	
+
 	void yyerror(char const * msg) {
-		cerr << msg << endl;	
+		cerr << msg << endl;
 	}
 
 	void indent(vector<string>* target, vector<string>* lines) {
@@ -25,15 +25,22 @@
     Statement* statement;
     Expression* expression;
     Assignment* assignment;
-    TypeDeclaration* typeDeclaration;
+
+    Type* type;
+    SimpleType* simpleType;
+    ComplexType* complexType;
+    vector<TypedId*>* typedIdList;
+    TypedId* typedId;
+    FunctionType* functionType;
+
     string* string;
     int integer;
-    int token;    
 }
 
-%token <integer> INT
+%token LET DEF
 %token PLUS MINUS TIMES
 %token LPARENT RPARENT EQUALS SEMICOLON COLON ARROW DOT COMMA
+%token <integer> INT
 %token <string> STRING
 %token <string> ID
 
@@ -42,93 +49,95 @@
 %type <statement> statement
 %type <expression> expression term factor minusSomething smallestThing
 %type <assignment> assignment
-%type <typeDeclaration> typeDeclaration
-%type <string> typeItemList typeItem
+%type <assignment> assignmentWithoutKeyword
+
+%type <type> type
+%type <complexType> complexType
+%type <typedIdList> typedIdList
+%type <typedId> typedId
+%type <functionType> functionType
 
 %start program
 
 %%
 program:
-	chainedStatements { 
-			parsedProgram = $1;
-		}
+	chainedStatements                   {   parsedProgram = $1; }
 	;
 chainedStatements:
-    chainedStatements statement {
-            $1->addStatement($2);
-            $$ = $1;
-        }
-    | statement {
-            auto prog = new Program();
-            prog->addStatement($1);
-            $$ = prog;        
-        }
+      chainedStatements statement       {
+                                            $1->addStatement($2);
+                                            $$ = $1;
+                                        }
+    | statement                         {
+                                            $$ = new Program();
+                                            $$->addStatement($1);
+                                        }
     ;
 statement:
-    expression SEMICOLON { $$ = $1; }
-    | assignment SEMICOLON { $$ = $1; }
+      expression SEMICOLON              {   $$ = $1; }
+    | assignment SEMICOLON              {   $$ = $1; }
     ;
 expression:
 	term
 	;
 term:
-	term PLUS factor {
-            $$ = new PlusOp($1, $3);
-		}
-    | term MINUS factor {
-			$$ = new MinusOp($1, $3);
-		}
+	  term PLUS factor                  {   $$ = new PlusOp($1, $3); }
+    | term MINUS factor                 {   $$ = new MinusOp($1, $3); }
 	| factor
     ;
 factor:
-	factor TIMES minusSomething { 
-			$$ = new TimesOp($1, $3);
-		}
+	  factor TIMES minusSomething       {   $$ = new TimesOp($1, $3); }
 	| minusSomething
 	;
 minusSomething:
-	MINUS smallestThing {
-			$$ = new Negation($2);
-		}
+	  MINUS smallestThing               {   $$ = new Negation($2); }
 	| smallestThing
 	;
 smallestThing:
-	LPARENT expression RPARENT { 
-			$$ = $2;
-		}
-	| INT { 
-            $$ = new IntValue($1);
-		}
-    | STRING {
-            $$ = new StringValue(*$1);
-        }
-    | ID {
-            $$ = new EvalId(*$1);
-        }
+	  LPARENT expression RPARENT        {   $$ = $2; }
+	| INT                               {   $$ = new IntValue($1); }
+    | STRING                            {   $$ = new StringValue(*$1); }
+    | ID                                {   $$ = new EvalId(*$1); }
 	;
 assignment:
-    ID EQUALS expression { 
-            $$ = new ExpressionAssignment(*$1, $3);
-        }
-    | ID EQUALS typeDeclaration { 
-            $$ = new TypeAssignment(*$1, $3);
-        }
+      DEF assignmentWithoutKeyword      {   $$ = $2; }
+    | LET assignmentWithoutKeyword      {   $$ = $2; }
     ;
-typeDeclaration:
-    LPARENT typeItemList RPARENT { 
-			$$ = new TypeDeclaration(*$2);
-		}
+assignmentWithoutKeyword:
+      ID EQUALS expression              {   $$ = new ExpressionAssignment(*$1, $3); }
+    | ID EQUALS functionType            {   $$ = new TypeAssignment(*$1, $3); }
+    | ID EQUALS complexType             {   $$ = new TypeAssignment(*$1, $3); }
     ;
-typeItemList:
-    typeItemList COMMA typeItem { 
-			$$ = new string(*$1 + ", " + *$3);
-		}
-    | typeItem
+type:
+      ID                                {   $$ = new SimpleType(*$1); }
+    | complexType                       {   $$ = $1; }
+    | functionType                      {   $$ = $1; }
     ;
-typeItem:
-    ID COLON ID { 
-			$$ = new string(*$1 + ": type(" + *$3 + ")");
-		}
+complexType:
+      LPARENT typedIdList RPARENT       {
+			                                $$ = new ComplexType();
+                                            for(TypedId* member: *$2) {
+                                                $$->addMember(*member);
+                                            }
+	                                    }
+    ;
+typedIdList:
+      typedIdList COMMA typedId         {
+                                            $$ = $1;
+                                            $$->push_back($3);
+		                                }
+    | typedId                           {
+                                            $$ = new vector<TypedId*>();
+                                            $$->push_back($1);
+                                        }
+    ;
+typedId:
+      ID COLON type                     {   $$ = new TypedId(*$1, $3); }
+    ;
+functionType:
+      ID ARROW type                     {   $$ = new IdFunctionType(*$1, $3); }
+    | complexType ARROW type            {   $$ = new ParameterFunctionType($1, $3); }
+    | LPARENT RPARENT ARROW type        {   $$ = new ParameterLessFunctionType($4); }
     ;
 %%
 

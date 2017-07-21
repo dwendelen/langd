@@ -17,7 +17,14 @@ class IntValue;
 class EvalId;
 class ExpressionAssignment;
 class TypeAssignment;
-class TypeDeclaration;
+class Type;
+class SimpleType;
+class ComplexType;
+class TypedId;
+class FunctionType;
+class IdFunctionType;
+class ParameterFunctionType;
+class ParameterLessFunctionType;
 
 class Visitor {
 public:
@@ -190,18 +197,18 @@ public:
 
 class TypeAssignment: public Assignment {
     string id;
-    TypeDeclaration* typeDeclaration;
+    Type* type;
 public:
-    TypeAssignment(string id, TypeDeclaration* typeDeclaration):
+    TypeAssignment(string id, Type* type):
         id(id),
-        typeDeclaration(typeDeclaration) {}
+        type(type) {}
 
     string getId() {
         return id;
     }
 
-    TypeDeclaration* getTypeDeclaration() {
-        return typeDeclaration;
+    Type* getType() {
+        return type;
     }
 
     void accept(Visitor* visitor) {
@@ -209,11 +216,89 @@ public:
     }
 };
 
-class TypeDeclaration {
-    public:
-        TypeDeclaration(string text): text(text) {}
+class Type {
+public:
+    virtual string asString() = 0;
+};
 
-        string text;
+class SimpleType: public Type {
+private:
+    string type;
+public:
+    SimpleType(string type): type(type) {}
+
+    virtual string asString() {
+        return type;
+    }
+};
+
+class TypedId {
+private:
+    string id;
+    Type* type;
+public:
+    TypedId(string id, Type* type): id(id), type(type) {}
+
+    string getId() {
+        return id;
+    }
+
+    Type* getType() {
+        return type;
+    }
+};
+
+class ComplexType: public Type {
+private:
+    vector<TypedId> members;
+public:
+    void addMember(TypedId member) {
+        members.push_back(member);
+    }
+    virtual string asString() {
+        string result = "(";
+        for(TypedId member: members) {
+            result += (member.getId() + ": " + member.getType()->asString() + ", ");
+        }
+        return result.substr(0, result.size()-2) + ")";
+    }
+};
+
+class FunctionType: public Type {
+protected:
+    Type* outputType;
+protected:
+    FunctionType(Type* outputType): outputType(outputType) {}
+};
+
+class IdFunctionType: public FunctionType {
+private:
+    string id;
+public:
+    IdFunctionType(string id, Type* outputType): FunctionType(outputType), id(id) {}
+    virtual string asString() {
+        return "(" + id + " => " + outputType->asString() + ")";
+    }
+};
+
+class ParameterFunctionType: public FunctionType {
+private:
+    ComplexType* inputType;
+public:
+    ParameterFunctionType(ComplexType* inputType, Type* outputType):
+        FunctionType(outputType),
+        inputType(inputType) {}
+    virtual string asString() {
+        return inputType->asString() + " => " + outputType->asString();
+    }
+};
+
+class ParameterLessFunctionType: public FunctionType {
+public:
+    ParameterLessFunctionType(Type* outputType): FunctionType(outputType) {}
+    virtual string asString() {
+        return "() => " + outputType->asString();
+    }
 };
 
 #endif

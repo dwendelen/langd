@@ -68,5 +68,5 @@ void Printer::visit(ExpressionAssignment* expressionAssignment) {
 }
 
 void Printer::visit(TypeAssignment* typeAssignment) {
-    printLine(typeAssignment->getId() + " = " + typeAssignment->getTypeDeclaration()->text);
+    printLine(typeAssignment->getId() + " = " + typeAssignment->getType()->asString());
 }

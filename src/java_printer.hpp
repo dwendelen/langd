@@ -1,17 +1,15 @@
-#ifndef LANGD_PRINTER_H
-#define LANGD_PRINTER_H
+#ifndef LANGD_JAVA_PRINTER_H
+#define LANGD_JAVA_PRINTER_H
 
 #include "ast.hpp"
 
-class Printer: public Visitor {
+class JavaPrinter: public Visitor {
 private:
     string indent = "";
 public:
     void print(Program* program);
     void printLine(string s);
     void indented(Visitable* toVisit);
-
-    void visitBinaryOp(string op, BinaryOp* binaryOp);
 
     virtual void visit(Program* program);
     virtual void visit(PlusOp* plusOp);
