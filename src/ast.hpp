@@ -6,7 +6,7 @@
 
 using namespace std;
 
-class Program;
+class Block;
 class Statement;
 class PlusOp;
 class MinusOp;
@@ -14,9 +14,8 @@ class TimesOp;
 class Negation;
 class StringValue;
 class IntValue;
-class EvalId;
-class ExpressionAssignment;
-class TypeAssignment;
+class ReferenceId;
+class Assignment;
 class Type;
 class SimpleType;
 class ComplexType;
@@ -25,20 +24,33 @@ class FunctionType;
 class IdFunctionType;
 class ParameterFunctionType;
 class ParameterLessFunctionType;
+class FunctionCall;
+class ParameterLessFunctionCall;
+class ParametrisedFunctionCall;
+class Construct;
+class InfixFunctionCall;
 
 class Visitor {
 public:
-    virtual void visit(Program* program) = 0;
+    virtual void visit(Block* block) = 0;
     virtual void visit(PlusOp* plusOp) = 0;
     virtual void visit(MinusOp* minusOp) = 0;
     virtual void visit(TimesOp* timesOp) = 0;
     virtual void visit(Negation* negation) = 0;
     virtual void visit(StringValue* negation) = 0;
     virtual void visit(IntValue* intValue) = 0;
-    virtual void visit(EvalId* evalId) = 0;
+    virtual void visit(ReferenceId* evalId) = 0;
 
-    virtual void visit(ExpressionAssignment* expressionAssignment) = 0;
-    virtual void visit(TypeAssignment* typeAssignment) = 0;
+    virtual void visit(ParameterLessFunctionCall* functionCall) = 0;
+    virtual void visit(ParametrisedFunctionCall* functionCall) = 0;
+    virtual void visit(Construct* construct) = 0;
+    virtual void visit(Assignment* assignment) = 0;
+
+    virtual void visit(InfixFunctionCall* InfixFunctionCall) = 0;
+    virtual void visit(ComplexType* complexType) = 0;
+    virtual void visit(IdFunctionType* IdFunctionType) = 0;
+    virtual void visit(ParameterFunctionType* parameterFunctionType) = 0;
+    virtual void visit(ParameterLessFunctionType* ParameterLessFunctionType) = 0;
 };
 
 class Visitable {
@@ -46,17 +58,10 @@ public:
     virtual void accept(Visitor* visitor) = 0;
 };
 
-class Program: public Visitable {
-private:
-    vector<Statement*> statements;
+class Block: public Visitable {
 public:
-    void addStatement(Statement* statement) {
-        statements.push_back(statement);
-    }
-    vector<Statement*> getStatements() {
-        vector<Statement*> res = this->statements;
-        return res;
-    }
+    vector<Statement*> statements;
+    Block(vector<Statement*> statements): statements(statements) {}
 
     void accept(Visitor* visitor) {
         visitor->visit(this);
@@ -70,18 +75,11 @@ class Expression: public Statement {
 };
 
 class BinaryOp: public Expression {
-private:
+public:
     Expression* lhs;
     Expression* rhs;
-public:
-    BinaryOp(Expression* lhs, Expression* rhs): lhs(lhs), rhs(rhs) {}
 
-    Expression* getRhs() {
-        return this->rhs;
-    }
-    Expression* getLhs() {
-        return this->lhs;
-    }
+    BinaryOp(Expression* lhs, Expression* rhs): lhs(lhs), rhs(rhs) {}
 };
 
 class PlusOp: public BinaryOp {
@@ -112,14 +110,10 @@ public:
 };
 
 class Negation: public Expression {
-private:
-    Expression* expression;
 public:
-    Negation(Expression* expression): expression(expression) {}
+    Expression* expression;
 
-    Expression* getExpression() {
-        return expression;
-    }
+    Negation(Expression* expression): expression(expression) {}
 
     void accept(Visitor* visitor) {
         visitor->visit(this);
@@ -127,14 +121,10 @@ public:
 };
 
 class StringValue: public Expression {
-private:
-    string value;
 public:
-    StringValue(string value): value(value) {}
+    string value;
 
-    string getValue() {
-        return value;
-    }
+    StringValue(string value): value(value) {}
 
     void accept(Visitor* visitor) {
         visitor->visit(this);
@@ -142,29 +132,9 @@ public:
 };
 
 class IntValue: public Expression {
-private:
+public:
     int value;
-public:
     IntValue(int value): value(value) {}
-
-    int getValue() {
-        return value;
-    }
-
-    void accept(Visitor* visitor) {
-        visitor->visit(this);
-    }
-};
-
-class EvalId: public Expression {
-private:
-    string id;
-public:
-    EvalId(string id): id(id) {}
-
-    string getId() {
-        return id;
-    }
 
     void accept(Visitor* visitor) {
         visitor->visit(this);
@@ -172,133 +142,133 @@ public:
 };
 
 class Assignment: public Statement {
-};
-
-class ExpressionAssignment: public Assignment {
+public:
     string id;
     Expression* expression;
-public:
-    ExpressionAssignment(string id, Expression* expression):
+
+    Assignment(string id, Expression* expression):
         id(id),
         expression(expression) {}
 
-    string getId() {
-        return id;
-    }
-
-    Expression* getExpression() {
-        return expression;
-    }
-
     void accept(Visitor* visitor) {
         visitor->visit(this);
     }
 };
 
-class TypeAssignment: public Assignment {
+class Type: public Expression {
+};
+
+class ReferenceId: public Type {
+public:
     string id;
-    Type* type;
-public:
-    TypeAssignment(string id, Type* type):
-        id(id),
-        type(type) {}
-
-    string getId() {
-        return id;
-    }
-
-    Type* getType() {
-        return type;
-    }
+    ReferenceId(string id): id(id) {}
 
     void accept(Visitor* visitor) {
         visitor->visit(this);
-    }
-};
-
-class Type {
-public:
-    virtual string asString() = 0;
-};
-
-class SimpleType: public Type {
-private:
-    string type;
-public:
-    SimpleType(string type): type(type) {}
-
-    virtual string asString() {
-        return type;
     }
 };
 
 class TypedId {
-private:
+public:
     string id;
     Type* type;
-public:
+
     TypedId(string id, Type* type): id(id), type(type) {}
-
-    string getId() {
-        return id;
-    }
-
-    Type* getType() {
-        return type;
-    }
 };
 
 class ComplexType: public Type {
-private:
-    vector<TypedId> members;
 public:
-    void addMember(TypedId member) {
-        members.push_back(member);
-    }
-    virtual string asString() {
-        string result = "(";
-        for(TypedId member: members) {
-            result += (member.getId() + ": " + member.getType()->asString() + ", ");
-        }
-        return result.substr(0, result.size()-2) + ")";
+    vector<TypedId> members;
+    ComplexType(vector<TypedId> members): members(members) {}
+
+    void accept(Visitor* visitor) {
+        visitor->visit(this);
     }
 };
 
 class FunctionType: public Type {
-protected:
+public:
     Type* outputType;
-protected:
     FunctionType(Type* outputType): outputType(outputType) {}
 };
 
 class IdFunctionType: public FunctionType {
-private:
-    string id;
 public:
+    string id;
     IdFunctionType(string id, Type* outputType): FunctionType(outputType), id(id) {}
-    virtual string asString() {
-        return "(" + id + " => " + outputType->asString() + ")";
+
+    void accept(Visitor* visitor) {
+        visitor->visit(this);
     }
 };
 
 class ParameterFunctionType: public FunctionType {
-private:
-    ComplexType* inputType;
 public:
+    ComplexType* inputType;
     ParameterFunctionType(ComplexType* inputType, Type* outputType):
         FunctionType(outputType),
         inputType(inputType) {}
-    virtual string asString() {
-        return inputType->asString() + " => " + outputType->asString();
+
+    void accept(Visitor* visitor) {
+        visitor->visit(this);
     }
 };
 
 class ParameterLessFunctionType: public FunctionType {
 public:
     ParameterLessFunctionType(Type* outputType): FunctionType(outputType) {}
-    virtual string asString() {
-        return "() => " + outputType->asString();
+
+    void accept(Visitor* visitor) {
+        visitor->visit(this);
     }
 };
 
+class FunctionCall: public Expression {
+public:
+    string id;
+
+    FunctionCall(string id): id(id) {}
+};
+
+class ParameterLessFunctionCall: public FunctionCall {
+public:
+    ParameterLessFunctionCall(string id): FunctionCall(id) {}
+
+    void accept(Visitor* visitor) {
+        visitor->visit(this);
+    }
+};
+
+class ParametrisedFunctionCall: public FunctionCall {
+public:
+    Expression* parameter;
+
+    ParametrisedFunctionCall(string id, Expression* parameter): FunctionCall(id), parameter(parameter) {}
+
+    void accept(Visitor* visitor) {
+        visitor->visit(this);
+    }
+};
+class Construct: public Expression {
+public:
+    vector<Assignment*> assignments;
+    Construct(vector<Assignment*> assignments): assignments(assignments) {}
+
+    void accept(Visitor* visitor) {
+        visitor->visit(this);
+    }
+};
+class InfixFunctionCall: public Expression {
+public:
+    Expression* precedingExpression;
+    FunctionCall* functionCall;
+
+    InfixFunctionCall(Expression* precedingExpression, FunctionCall* functionCall):
+        precedingExpression(precedingExpression),
+        functionCall(functionCall) {}
+
+    void accept(Visitor* visitor) {
+        visitor->visit(this);
+    }
+};
 #endif

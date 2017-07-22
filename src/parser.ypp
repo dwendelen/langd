@@ -1,37 +1,40 @@
 %{
-	#include <string>
-	#include <iostream>
-	#include <vector>
-	#include "ast.hpp"
+    #include <string>
+    #include <iostream>
+    #include <vector>
+    #include "ast.hpp"
 
 
-	int yylex();
-	Program* parsedProgram;
-	using namespace std;
+    int yylex();
+    Block* parsedProgram;
+    using namespace std;
 
-	void yyerror(char const * msg) {
-		cerr << msg << endl;
-	}
+    void yyerror(char const * msg) {
+        cerr << msg << endl;
+    }
 
-	void indent(vector<string>* target, vector<string>* lines) {
-		for(string line: *lines) {
-			target->push_back("    " + line);
-		}
-	}
+    void indent(vector<string>* target, vector<string>* lines) {
+        for(string line: *lines) {
+            target->push_back("    " + line);
+        }
+    }
 %}
 
 %union {
-    Program* program;
+    Block* block;
     Statement* statement;
+    vector<Statement*>* statements;
     Expression* expression;
     Assignment* assignment;
+    vector<Assignment*>* assignments;
 
     Type* type;
-    SimpleType* simpleType;
+    ReferenceId* referenceId;
     ComplexType* complexType;
-    vector<TypedId*>* typedIdList;
+    vector<TypedId>* typedIds;
     TypedId* typedId;
     FunctionType* functionType;
+    FunctionCall* functionCall;
 
     string* string;
     int integer;
@@ -44,91 +47,92 @@
 %token <string> STRING
 %token <string> ID
 
-%type <program> program
-%type <program> chainedStatements
+%type <block> program
+%type <statements> chainedStatements
 %type <statement> statement
-%type <expression> expression term factor minusSomething smallestThing
+%type <expression> expression term factor minusSomething smallestThing functionCallChain construct
+%type <assignment> letOrDef
 %type <assignment> assignment
-%type <assignment> assignmentWithoutKeyword
+%type <functionCall> functionCall
 
 %type <type> type
 %type <complexType> complexType
-%type <typedIdList> typedIdList
+%type <typedIds> typedIds
 %type <typedId> typedId
 %type <functionType> functionType
+%type <assignments> constructItems
 
 %start program
 
 %%
 program:
-	chainedStatements                   {   parsedProgram = $1; }
-	;
+    chainedStatements                   {   parsedProgram = new Block(*$1); }
+    ;
 chainedStatements:
       chainedStatements statement       {
-                                            $1->addStatement($2);
                                             $$ = $1;
+                                            $$->push_back($2);
                                         }
     | statement                         {
-                                            $$ = new Program();
-                                            $$->addStatement($1);
+                                            $$ = new vector<Statement*>();
+                                            $$->push_back($1);
                                         }
     ;
 statement:
       expression SEMICOLON              {   $$ = $1; }
-    | assignment SEMICOLON              {   $$ = $1; }
+    | letOrDef SEMICOLON                {   $$ = $1; }
     ;
 expression:
-	term
-	;
+    term
+    ;
 term:
-	  term PLUS factor                  {   $$ = new PlusOp($1, $3); }
+      term PLUS factor                  {   $$ = new PlusOp($1, $3); }
     | term MINUS factor                 {   $$ = new MinusOp($1, $3); }
-	| factor
+    | factor
     ;
 factor:
-	  factor TIMES minusSomething       {   $$ = new TimesOp($1, $3); }
+      factor TIMES functionCallChain    {   $$ = new TimesOp($1, $3); }
+    | functionCallChain
+    ;
+functionCallChain:
+	  functionCallChain DOT functionCall{   $$ = new InfixFunctionCall($1, $3); }
 	| minusSomething
 	;
 minusSomething:
-	  MINUS smallestThing               {   $$ = new Negation($2); }
-	| smallestThing
-	;
-smallestThing:
-	  LPARENT expression RPARENT        {   $$ = $2; }
-	| INT                               {   $$ = new IntValue($1); }
-    | STRING                            {   $$ = new StringValue(*$1); }
-    | ID                                {   $$ = new EvalId(*$1); }
-	;
-assignment:
-      DEF assignmentWithoutKeyword      {   $$ = $2; }
-    | LET assignmentWithoutKeyword      {   $$ = $2; }
+      MINUS smallestThing               {   $$ = new Negation($2); }
+    | smallestThing                     {   $$ = $1; }
     ;
-assignmentWithoutKeyword:
-      ID EQUALS expression              {   $$ = new ExpressionAssignment(*$1, $3); }
-    | ID EQUALS functionType            {   $$ = new TypeAssignment(*$1, $3); }
-    | ID EQUALS complexType             {   $$ = new TypeAssignment(*$1, $3); }
+smallestThing:
+      LPARENT expression RPARENT        {   $$ = $2; }
+    | INT                               {   $$ = new IntValue($1); }
+    | STRING                            {   $$ = new StringValue(*$1); }
+    | type                              {   $$ = $1; }
+    | functionCall                      {   $$ = $1; }
+    | construct                         {   $$ = $1; }
+    ;
+letOrDef:
+      DEF assignment                     {   $$ = $2; }
+    | LET assignment                     {   $$ = $2; }
+    ;
+assignment:
+      ID EQUALS expression              {   $$ = new Assignment(*$1, $3); }
     ;
 type:
-      ID                                {   $$ = new SimpleType(*$1); }
+      ID                                {   $$ = new ReferenceId(*$1); }
     | complexType                       {   $$ = $1; }
     | functionType                      {   $$ = $1; }
     ;
 complexType:
-      LPARENT typedIdList RPARENT       {
-			                                $$ = new ComplexType();
-                                            for(TypedId* member: *$2) {
-                                                $$->addMember(*member);
-                                            }
-	                                    }
+      LPARENT typedIds RPARENT          {   $$ = new ComplexType(*$2); }
     ;
-typedIdList:
-      typedIdList COMMA typedId         {
+typedIds:
+      typedIds COMMA typedId            {
                                             $$ = $1;
-                                            $$->push_back($3);
-		                                }
+                                            $$->push_back(*$3);
+                                        }
     | typedId                           {
-                                            $$ = new vector<TypedId*>();
-                                            $$->push_back($1);
+                                            $$ = new vector<TypedId>();
+                                            $$->push_back(*$1);
                                         }
     ;
 typedId:
@@ -138,6 +142,23 @@ functionType:
       ID ARROW type                     {   $$ = new IdFunctionType(*$1, $3); }
     | complexType ARROW type            {   $$ = new ParameterFunctionType($1, $3); }
     | LPARENT RPARENT ARROW type        {   $$ = new ParameterLessFunctionType($4); }
+    ;
+functionCall:
+      ID LPARENT RPARENT                {   $$ = new ParameterLessFunctionCall(*$1); }
+    | ID smallestThing                  {   $$ = new ParametrisedFunctionCall(*$1, $2); }
+    ;
+construct:
+      LPARENT constructItems RPARENT    {   $$ = new Construct(*$2); }
+    ;
+constructItems:
+      constructItems COMMA assignment   {
+                                            $$ = $1;
+                                            $$->push_back($3);
+                                        }
+    | assignment                        {
+                                            $$ = new vector<Assignment*>();
+                                            $$->push_back($1);
+                                        }
     ;
 %%
 

@@ -5,25 +5,38 @@
 
 class Printer: public Visitor {
 private:
-    string indent = "";
+    string beforeRootPrefix = "";
+    string afterRootPrefix = "";
+    string rootPrefix = "";
 public:
-    void print(Program* program);
-    void printLine(string s);
-    void indented(Visitable* toVisit);
+    void print(Block* block);
 
-    void visitBinaryOp(string op, BinaryOp* binaryOp);
+    void printElement(string s);
+    template <typename T> void printList(string op, vector<T> list);
+    void printItem(Visitable* visitable);
+    void printItem(TypedId typedId);
+    void printUnary(string op, Visitable* param);
+    void printBinary(string op, Visitable* lhs, Visitable* rhs);
 
-    virtual void visit(Program* program);
+    virtual void visit(Block* block);
     virtual void visit(PlusOp* plusOp);
     virtual void visit(MinusOp* minusOp);
     virtual void visit(TimesOp* timesOp);
     virtual void visit(Negation* negation);
     virtual void visit(StringValue* negation);
     virtual void visit(IntValue* intValue);
-    virtual void visit(EvalId* evalId);
+    virtual void visit(ReferenceId* evalId);
 
-    virtual void visit(ExpressionAssignment* expressionAssignment);
-    virtual void visit(TypeAssignment* typeAssignment);
+    virtual void visit(ParameterLessFunctionCall* functionCall);
+    virtual void visit(ParametrisedFunctionCall* functionCall);
+    virtual void visit(Construct* construct);
+    virtual void visit(Assignment* assignment);
+
+    virtual void visit(InfixFunctionCall* InfixFunctionCall);
+    virtual void visit(ComplexType* complexType);
+    virtual void visit(IdFunctionType* IdFunctionType);
+    virtual void visit(ParameterFunctionType* parameterFunctionType);
+    virtual void visit(ParameterLessFunctionType* ParameterLessFunctionType);
 };
 
 #endif

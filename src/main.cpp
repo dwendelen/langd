@@ -2,7 +2,7 @@
 #include "parser.hpp"
 #include "printer.hpp"
 
-extern Program* parsedProgram;
+extern Block* parsedProgram;
 
 int main() {
     int result = yyparse();
