@@ -16,6 +16,7 @@ class StringValue;
 class IntValue;
 class ReferenceId;
 class Assignment;
+class MemberSelection;
 class Type;
 class SimpleType;
 class ComplexType;
@@ -46,6 +47,7 @@ public:
     virtual void visit(Construct* construct) = 0;
     virtual void visit(Assignment* assignment) = 0;
 
+    virtual void visit(MemberSelection* memberSelection) = 0;
     virtual void visit(InfixFunctionCall* InfixFunctionCall) = 0;
     virtual void visit(ComplexType* complexType) = 0;
     virtual void visit(IdFunctionType* IdFunctionType) = 0;
@@ -149,6 +151,20 @@ public:
     Assignment(string id, Expression* expression):
         id(id),
         expression(expression) {}
+
+    void accept(Visitor* visitor) {
+        visitor->visit(this);
+    }
+};
+
+class MemberSelection: public Expression {
+public:
+    Expression* previousExpression;
+    string id;
+
+    MemberSelection(Expression* previousExpression, string id):
+        previousExpression(previousExpression),
+        id(id) {}
 
     void accept(Visitor* visitor) {
         visitor->visit(this);

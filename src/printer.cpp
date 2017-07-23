@@ -124,6 +124,10 @@ void Printer::visit(Assignment* assignment) {
     printUnary(assignment->id + " = ", assignment->expression);
 }
 
+void Printer::visit(MemberSelection* memberSelection) {
+    printUnary("select(" + memberSelection->id + ") ", memberSelection->previousExpression);
+}
+
 void Printer::visit(ParameterLessFunctionCall* functionCall) {
     printElement("call(" + functionCall->id + "())");
 }
