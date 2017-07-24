@@ -124,6 +124,11 @@ void Printer::visit(Assignment* assignment) {
     printUnary(assignment->id + " = ", assignment->expression);
 }
 
+void Printer::visit(FunctionDeclaration* functionDeclaration) {
+    printBinary(functionDeclaration->id + " = ", functionDeclaration->type, functionDeclaration->body);
+}
+
+
 void Printer::visit(MemberSelection* memberSelection) {
     printUnary("select(" + memberSelection->id + ") ", memberSelection->previousExpression);
 }

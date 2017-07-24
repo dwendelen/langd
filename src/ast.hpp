@@ -30,6 +30,7 @@ class ParameterLessFunctionCall;
 class ParametrisedFunctionCall;
 class Construct;
 class InfixFunctionCall;
+class FunctionDeclaration;
 
 class Visitor {
 public:
@@ -46,6 +47,7 @@ public:
     virtual void visit(ParametrisedFunctionCall* functionCall) = 0;
     virtual void visit(Construct* construct) = 0;
     virtual void visit(Assignment* assignment) = 0;
+    virtual void visit(FunctionDeclaration* functionDeclaration) = 0;
 
     virtual void visit(MemberSelection* memberSelection) = 0;
     virtual void visit(InfixFunctionCall* InfixFunctionCall) = 0;
@@ -172,12 +174,24 @@ public:
 };
 
 class Type: public Expression {
+public:
+    bool virtual operator ==(Type& other) = 0;
 };
 
 class ReferenceId: public Type {
 public:
     string id;
     ReferenceId(string id): id(id) {}
+
+    bool virtual operator ==(Type& other) {
+        ReferenceId* referenceId = dynamic_cast<ReferenceId*>(&other);
+        if(referenceId == nullptr) {
+            return false;
+        }
+
+        return id == referenceId->id;
+    }
+
 
     void accept(Visitor* visitor) {
         visitor->visit(this);
@@ -189,6 +203,11 @@ public:
     string id;
     Type* type;
 
+    bool virtual operator == (TypedId& other) {
+        return id == other.id &&
+            *type == *other.type;
+    }
+
     TypedId(string id, Type* type): id(id), type(type) {}
 };
 
@@ -196,6 +215,25 @@ class ComplexType: public Type {
 public:
     vector<TypedId> members;
     ComplexType(vector<TypedId> members): members(members) {}
+
+    bool virtual operator ==(Type& other) {
+        ComplexType* complexType = dynamic_cast<ComplexType*>(&other);
+        if(complexType == nullptr) {
+            return false;
+        }
+
+        if(members.size() != complexType->members.size()) {
+            return false;
+        }
+
+        for(int i = 0; i < members.size(); i++) {
+            if(!(members[i] == complexType->members[i])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     void accept(Visitor* visitor) {
         visitor->visit(this);
@@ -213,6 +251,16 @@ public:
     string id;
     IdFunctionType(string id, Type* outputType): FunctionType(outputType), id(id) {}
 
+    bool virtual operator ==(Type& other) {
+        IdFunctionType* idFunctionType = dynamic_cast<IdFunctionType*>(&other);
+        if(idFunctionType == nullptr) {
+            return false;
+        }
+
+        return id == idFunctionType->id &&
+            *outputType == *(idFunctionType->outputType);
+    }
+
     void accept(Visitor* visitor) {
         visitor->visit(this);
     }
@@ -225,6 +273,16 @@ public:
         FunctionType(outputType),
         inputType(inputType) {}
 
+    bool virtual operator ==(Type& other) {
+        ParameterFunctionType* parameterFunctionType = dynamic_cast<ParameterFunctionType*>(&other);
+        if(parameterFunctionType == nullptr) {
+            return false;
+        }
+
+        return inputType == parameterFunctionType->inputType &&
+            *outputType == *(parameterFunctionType->outputType);
+    }
+
     void accept(Visitor* visitor) {
         visitor->visit(this);
     }
@@ -233,6 +291,15 @@ public:
 class ParameterLessFunctionType: public FunctionType {
 public:
     ParameterLessFunctionType(Type* outputType): FunctionType(outputType) {}
+
+    bool virtual operator ==(Type& other) {
+        ParameterLessFunctionType* parameterFunctionType = dynamic_cast<ParameterLessFunctionType*>(&other);
+        if(parameterFunctionType == nullptr) {
+            return false;
+        }
+
+        return *outputType == *(parameterFunctionType->outputType);
+    }
 
     void accept(Visitor* visitor) {
         visitor->visit(this);
@@ -282,6 +349,18 @@ public:
     InfixFunctionCall(Expression* precedingExpression, FunctionCall* functionCall):
         precedingExpression(precedingExpression),
         functionCall(functionCall) {}
+
+    void accept(Visitor* visitor) {
+        visitor->visit(this);
+    }
+};
+class FunctionDeclaration: public Assignment {
+public:
+    FunctionType* type;
+    Expression* body;
+
+    FunctionDeclaration(string id, FunctionType* type, Expression* body):
+    Assignment(id, nullptr), type(type), body(body) {}
 
     void accept(Visitor* visitor) {
         visitor->visit(this);

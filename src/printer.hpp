@@ -31,6 +31,7 @@ public:
     virtual void visit(ParametrisedFunctionCall* functionCall);
     virtual void visit(Construct* construct);
     virtual void visit(Assignment* assignment);
+    virtual void visit(FunctionDeclaration* functionDeclaration);
     virtual void visit(MemberSelection* memberSelection);
 
     virtual void visit(InfixFunctionCall* InfixFunctionCall);
