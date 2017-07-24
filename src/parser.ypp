@@ -148,7 +148,7 @@ functionType:
     ;
 functionCall:
       ID LPARENT RPARENT                {   $$ = new ParameterLessFunctionCall(*$1); }
-    | ID LPARENT smallestThing RPARENT  {   $$ = new ParametrisedFunctionCall(*$1, $3); }
+    | ID smallestThing                  {   $$ = new ParametrisedFunctionCall(*$1, $2); }
     ;
 construct:
       LPARENT constructItems RPARENT    {   $$ = new Construct(*$2); }
