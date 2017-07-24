@@ -25,7 +25,7 @@ void JavaPrinter::print(Block* block) {
     cout << "    }" << endl;
 
     for(StructEntry entry: structs) {
-        cout << "    private static class " << entry.javaName << "{" << endl;
+        cout << "    private static class " << entry.javaName << " {" << endl;
         for(TypedId member: entry.type->members) {
             cout << "        public " << toJavaType(member.type) << " " << member.id << ";" << endl;
         }
@@ -304,6 +304,11 @@ void JavaPrinter::visit(Construct* construct) {
 }
 
 void JavaPrinter::visit(Assignment* assignment) {
+    if(scope.symbols.count(assignment->id) != 0) {
+        error();
+        cerr << assignment->id << " is already defined" << endl;
+        return;
+    }
     assignment->expression->accept(this);
     scope.symbols[assignment->id] = symbolLastExpression;
 
