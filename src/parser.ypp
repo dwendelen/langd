@@ -4,7 +4,6 @@
     #include <vector>
     #include "ast.hpp"
 
-
     int yylex();
     Block* parsedProgram;
     using namespace std;
@@ -148,7 +147,7 @@ functionType:
     ;
 functionCall:
       ID LPARENT RPARENT                {   $$ = new ParameterLessFunctionCall(*$1); }
-    | ID smallestThing                  {   $$ = new ParametrisedFunctionCall(*$1, $2); }
+    | ID memberChain                    {   $$ = new ParametrisedFunctionCall(*$1, $2); }
     ;
 construct:
       LPARENT constructItems RPARENT    {   $$ = new Construct(*$2); }
