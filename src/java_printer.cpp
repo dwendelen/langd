@@ -4,15 +4,16 @@
 
 using namespace std;
 
+bool isVoid(Type* type);
+
 void JavaPrinter::print(Block* block) {
-    vector<TypedId> in = {TypedId("msg", new ReferenceId("String"))};
-    auto printInType = new ComplexType(in);
-    auto type = new ParameterFunctionType(printInType, new ReferenceId("Void"));
+    auto printInType = new TupleType({TypedId("msg", STRING)});
+    auto type = new TupleFunctionType(printInType, VOID);
 
     Symbol printSymbol;
     printSymbol.javaName = "print";
     printSymbol.type = type;
-    scope.symbols["print"] = printSymbol;
+    scope->symbols["print"] = printSymbol;
 
     StructEntry printStruct;
     printStruct.type = printInType;
@@ -32,51 +33,99 @@ void JavaPrinter::print(Block* block) {
         cout << "    }" << endl;
     }
 
+    for(FunctionDeclaration* func: functions) {
+        Scope* outerScope = scope;
+        scope = new Scope;
+        scope->parent = outerScope;
+
+        //TODO Check function output type
+        string type = toJavaType(func->type->outputType);
+        string javaName = getSymbol(func->id).javaName;
+        cout << "    private static " << type << " " << javaName << "(";
+
+        printFunctionArguments(func->type);
+
+        cout <<") {" << endl;
+
+        func->expression->accept(this);
+        if(!isVoid(symbolLastExpression.type)) {
+            cout << "        return " << symbolLastExpression.javaName << ";" << endl;
+        }
+
+        cout << "    }" << endl;
+
+        scope = outerScope;
+    }
+
     cout << "    private static void print(PrintStruct toPrint) {" << endl;
     cout << "        System.out.print(toPrint.msg);" << endl;
     cout << "    }" << endl;
     cout << "}" << endl;
 }
 
-void JavaPrinter::visit(Block* block) {
-    for(auto statement: block->statements) {
-        statement->accept(this);
+Symbol getSymbol(Scope* scope, string name) {
+    auto symbol = scope->symbols.find(name);
+    if(symbol == scope->symbols.end()) {
+        if(scope->parent == nullptr) {
+            throw UnknownSymbol();
+        }
+        return getSymbol(scope->parent, name);
     }
+
+    return symbol->second;
 }
 
-string JavaPrinter::getNextId() {
-    return "id" + to_string(lastId++);
+Symbol JavaPrinter::getSymbol(string name) {
+    return ::getSymbol(scope, name);
 }
 
-bool isInt(Type* type) {
-    ReferenceId* simple = dynamic_cast<ReferenceId*>(type);
-    if(!simple) {
+bool hasSymbol(Scope* scope, string name) {
+    int cnt = scope->symbols.count(name);
+    if(cnt != 0) {
+        return true;
+    }
+
+    if(scope->parent == nullptr) {
         return false;
     }
 
-    return simple->id == "Int";
+    return hasSymbol(scope->parent, name);
 }
 
-bool isVoid(Type* type) {
-    ReferenceId* simple = dynamic_cast<ReferenceId*>(type);
-    if(!simple) {
-        return false;
-    }
-
-    return simple->id == "Void";
+bool JavaPrinter::hasSymbol(string name) {
+    return ::hasSymbol(scope, name);
 }
 
-bool isString(Type* type) {
-    ReferenceId* simple = dynamic_cast<ReferenceId*>(type);
-    if(!simple) {
-        return false;
+string JavaPrinter::getOrCreateStruct(TupleType* type) {
+    for(StructEntry entry: structs) {
+        if(*entry.type == *type) {
+            return entry.javaName;
+        }
     }
 
-    return simple->id == "String";
+    string newName = "Struct" + to_string(lastId++);
+    StructEntry e;
+    e.javaName = newName;
+    e.type = type;
+    structs.push_back(e);
+
+    return newName;
+}
+
+bool JavaPrinter::isInt(Type* type) {
+    return *type == *INT;
+}
+
+bool JavaPrinter::isVoid(Type* type) {
+    return *type == *VOID;
+}
+
+bool JavaPrinter::isString(Type* type) {
+    return *type == *STRING;
 }
 
 string JavaPrinter::toJavaType(Type* type) {
-    ReferenceId* simple = dynamic_cast<ReferenceId*>(type);
+    IdReference* simple = dynamic_cast<IdReference*>(type);
     if(simple) {
        if(simple->id == "String") {
         return "String";
@@ -89,7 +138,7 @@ string JavaPrinter::toJavaType(Type* type) {
         return "unknown";
     }
 
-    ComplexType* complexType = dynamic_cast<ComplexType*>(type);
+    TupleType* complexType = dynamic_cast<TupleType*>(type);
     if(complexType) {
         return getOrCreateStruct(complexType);
     }
@@ -97,24 +146,12 @@ string JavaPrinter::toJavaType(Type* type) {
     return "unknown";
 }
 
-string JavaPrinter::getOrCreateStruct(ComplexType* type) {
-    for(StructEntry entry: structs) {
-        if(*entry.type == *type) {
-            return entry.javaName;
-        }
-    }
-
-    string newName = "Struct" + to_string(lastStructId++);
-    StructEntry e;
-    e.javaName = newName;
-    e.type = type;
-    structs.push_back(e);
-
-    return newName;
+string JavaPrinter::getNextId(string prefix) {
+    return prefix + to_string(lastId++);
 }
 
 void JavaPrinter::endOperation(Type* outputType) {
-    symbolLastExpression.javaName = getNextId();
+    symbolLastExpression.javaName = getNextId("id");
     symbolLastExpression.type = outputType;
     if(isVoid(outputType)) {
         cout << "        ";
@@ -125,8 +162,60 @@ void JavaPrinter::endOperation(Type* outputType) {
 
 void JavaPrinter::error() {
     symbolLastExpression.javaName = "unkown";
-    symbolLastExpression.type = new ReferenceId("unknown");
+    symbolLastExpression.type = new IdReference("unknown");
     cerr << "//Error: ";
+}
+
+bool JavaPrinter::printFunctionArguments(FunctionType* type) {
+    IdFunctionType* idFType = dynamic_cast<IdFunctionType*>(type);
+    if(idFType != nullptr) {
+        try {
+            Symbol arg = getSymbol(idFType->id);
+            TupleType* cmplx = dynamic_cast<TupleType*>(arg.type);
+            if(cmplx == nullptr) {
+                error();
+                cerr << idFType->id << " is not a complex type";
+                return false;
+            }
+            TupleFunctionType* pft = new TupleFunctionType(cmplx, type->outputType);
+            return printFunctionArguments(pft);
+        } catch(UnknownSymbol e) {
+            error();
+            cerr << "Unknown symbol " << idFType->id;
+            return false;
+        }
+    }
+
+    TupleFunctionType* pft = dynamic_cast<TupleFunctionType*>(type);
+    if(pft == nullptr) {
+        error();
+        cerr << "Unknown function type";
+        return false;
+    }
+
+    cout << toJavaType(pft->inputType) << " " << "input" ;
+    //cout << toJavaType(member.type) << " " << member.id;
+
+    return true;
+}
+
+
+
+void JavaPrinter::visit(Block* block) {
+    for(auto statement: block->expressions) {
+        statement->accept(this);
+    }
+}
+
+void JavaPrinter::visit(Assignment* assignment) {
+    if(hasSymbol(assignment->id)) {
+        error();
+        cerr << assignment->id << " is already defined" << endl;
+        return;
+    }
+
+    assignment->expression->accept(this);
+    scope->symbols[assignment->id] = symbolLastExpression;
 }
 
 void JavaPrinter::visit(PlusOp* plusOp) {
@@ -135,7 +224,6 @@ void JavaPrinter::visit(PlusOp* plusOp) {
 
     plusOp->rhs->accept(this);
     Symbol rhs = symbolLastExpression;
-
 
     bool canDoMath =
         (isString(rhs.type) && isString(rhs.type)) ||
@@ -158,7 +246,6 @@ void JavaPrinter::visit(MinusOp* minusOp) {
     minusOp->rhs->accept(this);
     Symbol rhs = symbolLastExpression;
 
-
     bool canDoMath =
         (isInt(lhs.type) && isInt(rhs.type));
 
@@ -178,7 +265,6 @@ void JavaPrinter::visit(TimesOp* timesOp) {
 
     timesOp->rhs->accept(this);
     Symbol rhs = symbolLastExpression;
-
 
     bool canDoMath =
         (isInt(lhs.type) && isInt(rhs.type));
@@ -208,91 +294,29 @@ void JavaPrinter::visit(Negation* negation) {
 }
 
 void JavaPrinter::visit(StringValue* negation) {
-    endOperation(new ReferenceId("String"));
+    endOperation(STRING);
     cout << negation->value << ";" << endl;
 }
 
 void JavaPrinter::visit(IntValue* intValue) {
-    endOperation(new ReferenceId("Int"));
+    endOperation(INT);
     cout << intValue->value << ";" << endl;
 }
 
-void JavaPrinter::visit(ReferenceId* evalId) {
-    auto symbol = scope.symbols.find(evalId->id);
-    if(symbol == scope.symbols.end()) {
-        error();
-        cerr << evalId->id << " is unknown";
-        return;
-    }
-
-    symbolLastExpression = symbol->second;
-}
-
-void JavaPrinter::visit(ParameterLessFunctionCall* functionCall) {
-    auto symbol = scope.symbols.find(functionCall->id);
-    if(symbol == scope.symbols.end()) {
-        error();
-        cerr << functionCall->id << " is unknown";
-        return;
-    }
-
-    Symbol functionSym = symbol->second;
-
-    ParameterLessFunctionType* functionType = dynamic_cast<ParameterLessFunctionType*>(functionSym.type);
-    if(functionType == nullptr) {
-        error();
-        cerr << functionCall->id << " is not a parameterless function";
-        return;
-    }
-
-    endOperation(functionType->outputType);
-    cout << functionSym.javaName << "();" << endl;
-}
-
-void JavaPrinter::visit(ParametrisedFunctionCall* functionCall) {
-    auto symbol = scope.symbols.find(functionCall->id);
-    if(symbol == scope.symbols.end()) {
-        error();
-        cerr << functionCall->id << " is unknown";
-        return;
-    }
-
-    Symbol functionSym = symbol->second;
-
-    ParameterFunctionType* functionType = dynamic_cast<ParameterFunctionType*>(functionSym.type);
-    if(functionType == nullptr) {
-        error();
-        cerr << functionCall->id << " is not a parameterless function";
-        return;
-    }
-
-    functionCall->parameter->accept(this);
-    Symbol input = symbolLastExpression;
-
-    if(!(*input.type == *functionType->inputType)) {
-        error();
-        cerr << "type of " << input.javaName << " does not match the type of function " << functionCall->id;
-        return;
-    }
-
-    endOperation(functionType->outputType);
-    cout << functionSym.javaName << "(" << input.javaName << ");" << endl;
-}
-
-void JavaPrinter::visit(Construct* construct) {
+void JavaPrinter::visit(Tuple* tuple) {
     vector<string> javaNames;
     vector<TypedId> typedIds;
 
-    for(Assignment* assignment: construct->assignments) {
+    for(Assignment* assignment: tuple->assignments) {
         assignment->expression->accept(this);
         typedIds.push_back(TypedId(assignment->id, symbolLastExpression.type));
         javaNames.push_back(symbolLastExpression.javaName);
     }
 
-    auto complexType = new ComplexType(typedIds);
+    auto tupleType = new TupleType(typedIds);
 
-    string className = getOrCreateStruct(complexType);
-    string javaName = getNextId();
+    string className = getOrCreateStruct(tupleType);
+    string javaName = getNextId("id");
 
     cout << "        " << className << " " << javaName << " = " << " new " << className << "();" << endl;
     for(int i = 0; i < typedIds.size(); i++) {
@@ -300,29 +324,12 @@ void JavaPrinter::visit(Construct* construct) {
     }
 
     symbolLastExpression.javaName = javaName;
-    symbolLastExpression.type = complexType;
-}
-
-void JavaPrinter::visit(Assignment* assignment) {
-    if(scope.symbols.count(assignment->id) != 0) {
-        error();
-        cerr << assignment->id << " is already defined" << endl;
-        return;
-    }
-    assignment->expression->accept(this);
-    scope.symbols[assignment->id] = symbolLastExpression;
-
-    symbolLastExpression.javaName = "unknown";
-    symbolLastExpression.type = new ReferenceId("unknown");
-}
-
-void JavaPrinter::visit(FunctionDeclaration* functionDeclaration) {
-
+    symbolLastExpression.type = tupleType;
 }
 
 void JavaPrinter::visit(MemberSelection* memberSelection) {
     memberSelection->previousExpression->accept(this);
-    ComplexType* complexType = dynamic_cast<ComplexType*>(symbolLastExpression.type);
+    TupleType* complexType = dynamic_cast<TupleType*>(symbolLastExpression.type);
 
     if(complexType == nullptr) {
         error();
@@ -343,10 +350,61 @@ void JavaPrinter::visit(MemberSelection* memberSelection) {
     cerr << "Complex type has no member " + memberSelection->id;
 }
 
-void JavaPrinter::visit(InfixFunctionCall* InfixFunctionCall) {
+void JavaPrinter::visit(FunctionDeclaration* functionDeclaration) {
+    functions.push_back(functionDeclaration);
 
+    Symbol functionSymbol;
+    functionSymbol.type = functionDeclaration->type;
+    functionSymbol.javaName = getNextId(functionDeclaration->id);
+
+    scope->symbols[functionDeclaration->id] = functionSymbol;
 }
-void JavaPrinter::visit(ComplexType* complexType){}
+
+void JavaPrinter::visit(FunctionCall* functionCall) {
+    try {
+        Symbol functionSym = getSymbol(functionCall->id);
+
+        TupleFunctionType* functionType = dynamic_cast<TupleFunctionType*>(functionSym.type);
+        if(functionType == nullptr) {
+            error();
+            cerr << functionCall->id << " is not a function";
+            return;
+        }
+
+        functionCall->parameter->accept(this);
+        Symbol input = symbolLastExpression;
+
+        if(!(*input.type == *functionType->inputType)) {
+            error();
+            cerr << "type of " << input.javaName << " does not match the type of function " << functionCall->id;
+            return;
+        }
+
+        endOperation(functionType->outputType);
+        cout << functionSym.javaName << "(" << input.javaName << ");" << endl;
+    } catch(UnknownSymbol e) {
+        error();
+        cerr << functionCall->id << " is unknown";
+        return;
+    }
+}
+
+void JavaPrinter::visit(InfixFunctionCall* infixFunctionCall) {
+    infixFunctionCall->precedingExpression->accept(this);
+    infixFunctionCall->parameter->accept(this);
+
+    cout << "//Here comes the infix" << endl;
+}
+
+void JavaPrinter::visit(IdReference* idReference) {
+    try {
+        symbolLastExpression = getSymbol(idReference->id);
+    } catch(UnknownSymbol e) {
+        error();
+        cerr << idReference->id << " is unknown";
+    }
+}
+
+void JavaPrinter::visit(TupleType* tupleType){}
 void JavaPrinter::visit(IdFunctionType* IdFunctionType){}
-void JavaPrinter::visit(ParameterFunctionType* parameterFunctionType){}
-void JavaPrinter::visit(ParameterLessFunctionType* ParameterLessFunctionType){}
+void JavaPrinter::visit(TupleFunctionType* tupleFunctionType){}
