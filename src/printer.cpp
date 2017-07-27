@@ -11,7 +11,7 @@ void Printer::printElement(string element) {
     cout << rootPrefix << element << endl;
 }
 
-void Printer::printUnary(string op, Visitable* param) {
+void Printer::printUnary(string op, Expression* param) {
     string oldBeforeRootPrefix = beforeRootPrefix;
     string oldRootPrefix = rootPrefix;
     string oldAfterRootPrefix = afterRootPrefix;
@@ -38,7 +38,7 @@ void Printer::printUnary(string op, Visitable* param) {
     afterRootPrefix = oldAfterRootPrefix;
 }
 
-void Printer::printBinary(string op, Visitable* lhs, Visitable* rhs) {
+void Printer::printBinary(string op, Expression* lhs, Expression* rhs) {
     string oldBeforeRootPrefix = beforeRootPrefix;
     string oldRootPrefix = rootPrefix;
     string oldAfterRootPrefix = afterRootPrefix;
@@ -80,8 +80,8 @@ template <typename T> void Printer::printList(string op, vector<T> list) {
     afterRootPrefix = oldAfterRootPrefix;
 }
 
-void Printer::printItem(Visitable* visitable) {
-    visitable->accept(this);
+void Printer::printItem(Expression* expression) {
+    expression->accept(this);
 }
 
 void Printer::printItem(TypedId typedId) {
@@ -89,7 +89,11 @@ void Printer::printItem(TypedId typedId) {
 }
 
 void Printer::visit(Block* block) {
-    printList("block", block->statements);
+    printList("block", block->expressions);
+}
+
+void Printer::visit(Assignment* assignment) {
+    printUnary(assignment->id + " = ", assignment->expression);
 }
 
 void Printer::visit(PlusOp* plusOp) {
@@ -116,41 +120,38 @@ void Printer::visit(IntValue* intValue) {
     printElement("int(" + to_string(intValue->value) + ")");
 }
 
-void Printer::visit(ReferenceId* evalId) {
-    printElement("id(" + evalId->id + ")");
-}
-
-void Printer::visit(Assignment* assignment) {
-    printUnary(assignment->id + " = ", assignment->expression);
+void Printer::visit(Tuple* tuple) {
+    printList("tuple", tuple->assignments);
 }
 
 void Printer::visit(MemberSelection* memberSelection) {
     printUnary("select(" + memberSelection->id + ") ", memberSelection->previousExpression);
 }
 
-void Printer::visit(ParameterLessFunctionCall* functionCall) {
-    printElement("call(" + functionCall->id + "())");
-}
-void Printer::visit(ParametrisedFunctionCall* functionCall) {
-    printUnary("call(" + functionCall->id + ")", functionCall->parameter);
-}
-void Printer::visit(Construct* construct) {
-    printList("construct", construct->assignments);
+void Printer::visit(FunctionDeclaration* functionDeclaration) {
+    printBinary(functionDeclaration->id + " = ", functionDeclaration->type, functionDeclaration->expression);
 }
 
-void Printer::visit(ComplexType* complexType) {
-    printList("complex", complexType->members);
+void Printer::visit(FunctionCall* functionCall) {
+    printUnary("call(" + functionCall->id + ")", functionCall->parameter);
 }
 
 void Printer::visit(InfixFunctionCall* infixFunctionCall) {
-    printBinary(".", infixFunctionCall->precedingExpression, infixFunctionCall->functionCall);
+    printBinary("infixCall(" + infixFunctionCall->id + ")", infixFunctionCall->precedingExpression, infixFunctionCall->parameter);
 }
+
+void Printer::visit(IdReference* idRef) {
+    printElement("id(" + idRef->id + ")");
+}
+
+void Printer::visit(TupleType* complexType) {
+    printList("complex", complexType->members);
+}
+
 void Printer::visit(IdFunctionType* idFunctionType) {
     printUnary("id(" + idFunctionType->id + ") => ", idFunctionType->outputType);
 }
-void Printer::visit(ParameterFunctionType* parameterFunctionType) {
+
+void Printer::visit(TupleFunctionType* parameterFunctionType) {
     printBinary("=> ", parameterFunctionType->inputType, parameterFunctionType->outputType);
-}
-void Printer::visit(ParameterLessFunctionType* parameterLessFunctionType) {
-    printUnary("() => ", parameterLessFunctionType->outputType);
 }

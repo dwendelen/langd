@@ -1,11 +1,8 @@
 %{
-#define YYDEBUG 1
-
     #include <string>
     #include <iostream>
     #include <vector>
     #include "ast.hpp"
-
 
     int yylex();
     Block* parsedProgram;
@@ -14,19 +11,21 @@
     void yyerror(char const * msg) {
         cerr << msg << endl;
     }
+
+    FunctionCall* createInfix(Expression* precedingExpression, FunctionCall* functionCall);
 %}
 
 %union {
-    Block* block;
-    Statement* statement;
-    vector<Statement*>* statements;
     Expression* expression;
+    vector<Expression*>* expressions;
     Assignment* assignment;
     vector<Assignment*>* assignments;
 
+    Block* block;
+
     Type* type;
-    ReferenceId* referenceId;
-    ComplexType* complexType;
+    IdReference* idReference;
+    TupleType* tupleType;
     vector<TypedId>* typedIds;
     TypedId* typedId;
     FunctionType* functionType;
@@ -44,15 +43,13 @@
 %token <string> ID
 
 %type <block> program
-%type <statements> chainedStatements
-%type <statement> statement
-%type <expression> expression term factor minusSomething smallestThing memberChain construct
-%type <assignment> letOrDef
-%type <assignment> assignment
+%type <assignment> assignment letOrDef
+%type <expressions> expressionChain
+%type <expression> terminatedExpression expression term factor negation smallestThing memberChain tuple functionCallLike
 %type <functionCall> functionCall
 
 %type <type> type typeWithoutFunctionType
-%type <complexType> complexType
+%type <tupleType> tupleType
 %type <typedIds> typedIds
 %type <typedId> typedId
 %type <functionType> functionType
@@ -62,24 +59,25 @@
 
 %%
 program:
-      chainedStatements                 {   parsedProgram = new Block(*$1); }
+      expressionChain                   {   parsedProgram = new Block(*$1); }
     ;
-chainedStatements:
-      chainedStatements statement       {
+expressionChain:
+      expressionChain terminatedExpression
+                                        {
                                             $$ = $1;
                                             $$->push_back($2);
                                         }
-    | statement                         {
-                                            $$ = new vector<Statement*>();
+    | terminatedExpression              {
+                                            $$ = new vector<Expression*>();
                                             $$->push_back($1);
                                         }
     ;
-statement:
+terminatedExpression:
       expression SEMICOLON              {   $$ = $1; }
     | letOrDef SEMICOLON                {   $$ = $1; }
     ;
 expression:
-    term
+    term                                {   $$ = $1; }
     ;
 term:
       term PLUS factor                  {   $$ = new PlusOp($1, $3); }
@@ -87,17 +85,25 @@ term:
     | factor
     ;
 factor:
-      factor TIMES minusSomething       {   $$ = new TimesOp($1, $3); }
-    | minusSomething
+      factor TIMES negation             {   $$ = new TimesOp($1, $3); }
+    | negation
     ;
-minusSomething:
-      MINUS memberChain                 {   $$ = new Negation($2); }
-    | memberChain                       {   $$ = $1; }
+negation:
+      MINUS functionCallLike            {   $$ = new Negation($2); }
+    | functionCallLike                  {   $$ = $1; }
+    ;
+functionCallLike:
+      functionCall                      {   $$ = $1; }
+    | memberChain DOT functionCall      {   $$ = new InfixFunctionCall($1, $3->id, $3->parameter); }
+    | memberChain
+    ;
+functionCall:
+      ID LPARENT RPARENT                {   $$ = new FunctionCall(*$1, new TupleType({})); }
+    | ID memberChain                    {   $$ = new FunctionCall(*$1, $2); }
     ;
 memberChain:
 	  memberChain DOT ID                {   $$ = new MemberSelection($1, *$3); }
     //| memberChain DOT INT             {   $$ = new ArraySelection($1, $3); }
-    | memberChain DOT functionCall      {   $$ = new InfixFunctionCall($1, $3); }
     | smallestThing                     {   $$ = $1; }
     ;
 smallestThing:
@@ -105,29 +111,29 @@ smallestThing:
     | INT                               {   $$ = new IntValue($1); }
     | STRING                            {   $$ = new StringValue(*$1); }
     | type                              {   $$ = $1; }
-    | functionCall                      {   $$ = $1; }
-    | construct                         {   $$ = $1; }
+    | tuple                             {   $$ = $1; }
     ;
 letOrDef:
-      DEF assignment                    {   $$ = $2; }
-    | LET assignment                    {   $$ = $2; }
+	  LET assignment                    {   $$ = $2; }
+    //| DEF assignment                    {   $$ = $2; }
+
     ;
 assignment:
       ID EQUALS expression              {   $$ = new Assignment(*$1, $3); }
-    //| ID COLON typeWithoutFunctionType EQUALS expression {    $$ = new FunctionDeclaration(*$1, $3, $5); }
-    //| ID COLON functionType EQUALS expression             { $$ = new TypedAssignment(*$1, $3); }
+    | ID COLON functionType EQUALS expression {    $$ = new FunctionDeclaration(*$1, $3, $5); }
+    //| ID COLON typeWithoutFunctionType EQUALS expression             { $$ = new TypedAssignment(*$1, $3); }
     ;
 type:
       typeWithoutFunctionType           {   $$ = $1; }
     | functionType                      {   $$ = $1; }
     ;
 typeWithoutFunctionType:
-      ID                                {   $$ = new ReferenceId(*$1); }
-    | complexType                       {   $$ = $1; }
+      ID                                {   $$ = new IdReference(*$1); }
+    | tupleType                         {   $$ = $1; }
     //| ID L_SQ_BRACKET type R_SQ_BRACKET {   $$ = new ArrayType(*$1, $3); }
     ;
-complexType:
-      LPARENT typedIds RPARENT          {   $$ = new ComplexType(*$2); }
+tupleType:
+      LPARENT typedIds RPARENT          {   $$ = new TupleType(*$2); }
     ;
 typedIds:
       typedIds COMMA typedId            {
@@ -144,15 +150,11 @@ typedId:
     ;
 functionType:
       ID ARROW type                     {   $$ = new IdFunctionType(*$1, $3); }
-    | complexType ARROW type            {   $$ = new ParameterFunctionType($1, $3); }
-    | LPARENT RPARENT ARROW type        {   $$ = new ParameterLessFunctionType($4); }
+    | tupleType ARROW type              {   $$ = new TupleFunctionType($1, $3); }
+    | LPARENT RPARENT ARROW type        {   $$ = new TupleFunctionType(new TupleType({}), $4); }
     ;
-functionCall:
-      ID LPARENT RPARENT                {   $$ = new ParameterLessFunctionCall(*$1); }
-    | ID smallestThing                  {   $$ = new ParametrisedFunctionCall(*$1, $2); }
-    ;
-construct:
-      LPARENT constructItems RPARENT    {   $$ = new Construct(*$2); }
+tuple:
+      LPARENT constructItems RPARENT    {   $$ = new Tuple(*$2); }
     ;
 constructItems:
       constructItems COMMA assignment   {
@@ -165,3 +167,7 @@ constructItems:
                                         }
     ;
 %%
+
+FunctionCall* createInfix(Expression* precedingExpression, FunctionCall* functionCall) {
+    return functionCall;
+}

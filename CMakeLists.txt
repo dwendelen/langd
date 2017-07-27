@@ -10,7 +10,7 @@ project("langd")
 find_package(BISON)
 find_package(FLEX)
 
-BISON_TARGET(Parser src/parser.ypp ${CMAKE_CURRENT_BINARY_DIR}/parser.cpp COMPILE_FLAGS "--debug -v")
+BISON_TARGET(Parser src/parser.ypp ${CMAKE_CURRENT_BINARY_DIR}/parser.cpp COMPILE_FLAGS "-v")
 FLEX_TARGET(Lexer src/lexer.l  ${CMAKE_CURRENT_BINARY_DIR}/lexer.cpp)
 ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
@@ -18,7 +18,7 @@ set(SRC
     src/main.cpp
     src/ast.cpp
     src/printer.cpp
-    #src/java_printer.cpp
+    src/java_printer.cpp
 )
 
 include_directories(

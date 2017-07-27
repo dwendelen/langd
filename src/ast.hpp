@@ -6,74 +6,97 @@
 
 using namespace std;
 
+class Expression;
 class Block;
-class Statement;
+class Assignment;
+
 class PlusOp;
 class MinusOp;
 class TimesOp;
 class Negation;
 class StringValue;
 class IntValue;
-class ReferenceId;
-class Assignment;
-class MemberSelection;
-class Type;
-class SimpleType;
-class ComplexType;
+
+class Tuple;
 class TypedId;
-class FunctionType;
-class IdFunctionType;
-class ParameterFunctionType;
-class ParameterLessFunctionType;
+class MemberSelection;
+
+class FunctionDeclaration;
 class FunctionCall;
-class ParameterLessFunctionCall;
-class ParametrisedFunctionCall;
-class Construct;
 class InfixFunctionCall;
 
-class Visitor {
+class Type;
+class IdReference;
+class TupleType;
+class FunctionType;
+class IdFunctionType;
+class TupleFunctionType;
+
+
+class ExpressionVisitor;
+class TypeVisitor;
+class FunctionTypeVisitor;
+
+
+class FunctionTypeVisitor {
+public:
+    virtual void visit(IdFunctionType* IdFunctionType) = 0;
+    virtual void visit(TupleFunctionType* parameterFunctionType) = 0;
+};
+
+class TypeVisitor: public FunctionTypeVisitor {
+public:
+    virtual void visit(IdReference* idReference) = 0;
+    virtual void visit(TupleType* tupleType) = 0;
+};
+
+class ExpressionVisitor: public TypeVisitor {
 public:
     virtual void visit(Block* block) = 0;
+    virtual void visit(Assignment* assignment) = 0;
+
     virtual void visit(PlusOp* plusOp) = 0;
     virtual void visit(MinusOp* minusOp) = 0;
     virtual void visit(TimesOp* timesOp) = 0;
     virtual void visit(Negation* negation) = 0;
     virtual void visit(StringValue* negation) = 0;
     virtual void visit(IntValue* intValue) = 0;
-    virtual void visit(ReferenceId* evalId) = 0;
 
-    virtual void visit(ParameterLessFunctionCall* functionCall) = 0;
-    virtual void visit(ParametrisedFunctionCall* functionCall) = 0;
-    virtual void visit(Construct* construct) = 0;
-    virtual void visit(Assignment* assignment) = 0;
-
+    virtual void visit(Tuple* construct) = 0;
     virtual void visit(MemberSelection* memberSelection) = 0;
-    virtual void visit(InfixFunctionCall* InfixFunctionCall) = 0;
-    virtual void visit(ComplexType* complexType) = 0;
-    virtual void visit(IdFunctionType* IdFunctionType) = 0;
-    virtual void visit(ParameterFunctionType* parameterFunctionType) = 0;
-    virtual void visit(ParameterLessFunctionType* ParameterLessFunctionType) = 0;
+
+    virtual void visit(FunctionDeclaration* functionDeclaration) = 0;
+    virtual void visit(FunctionCall* functionCall) = 0;
+    virtual void visit(InfixFunctionCall* infixFunctionCall) = 0;
 };
 
-class Visitable {
+class Expression {
 public:
-    virtual void accept(Visitor* visitor) = 0;
+    virtual void accept(ExpressionVisitor* visitor) = 0;
 };
 
-class Block: public Visitable {
+class Block: public Expression {
 public:
-    vector<Statement*> statements;
-    Block(vector<Statement*> statements): statements(statements) {}
+    vector<Expression*> expressions;
+    Block(vector<Expression*> expressions): expressions(expressions) {}
 
-    void accept(Visitor* visitor) {
+    void accept(ExpressionVisitor* visitor) {
         visitor->visit(this);
     }
 };
 
-class Statement: public Visitable {
-};
+class Assignment: public Expression {
+public:
+    string id;
+    Expression* expression;
 
-class Expression: public Statement {
+    Assignment(string id, Expression* expression):
+        id(id),
+        expression(expression) {}
+
+    void accept(ExpressionVisitor* visitor) {
+        visitor->visit(this);
+    }
 };
 
 class BinaryOp: public Expression {
@@ -88,7 +111,7 @@ class PlusOp: public BinaryOp {
 public:
     PlusOp(Expression* lhs, Expression* rhs): BinaryOp(lhs, rhs) {}
 
-    void accept(Visitor* visitor) {
+    void accept(ExpressionVisitor* visitor) {
         visitor->visit(this);
     }
 };
@@ -97,7 +120,7 @@ class MinusOp: public BinaryOp {
 public:
     MinusOp(Expression* lhs, Expression* rhs): BinaryOp(lhs, rhs) {}
 
-    void accept(Visitor* visitor) {
+    void accept(ExpressionVisitor* visitor) {
         visitor->visit(this);
     }
 };
@@ -106,7 +129,7 @@ class TimesOp: public BinaryOp {
 public:
     TimesOp(Expression* lhs, Expression* rhs): BinaryOp(lhs, rhs) {}
 
-    void accept(Visitor* visitor) {
+    void accept(ExpressionVisitor* visitor) {
         visitor->visit(this);
     }
 };
@@ -117,7 +140,7 @@ public:
 
     Negation(Expression* expression): expression(expression) {}
 
-    void accept(Visitor* visitor) {
+    void accept(ExpressionVisitor* visitor) {
         visitor->visit(this);
     }
 };
@@ -128,7 +151,7 @@ public:
 
     StringValue(string value): value(value) {}
 
-    void accept(Visitor* visitor) {
+    void accept(ExpressionVisitor* visitor) {
         visitor->visit(this);
     }
 };
@@ -138,21 +161,18 @@ public:
     int value;
     IntValue(int value): value(value) {}
 
-    void accept(Visitor* visitor) {
+    void accept(ExpressionVisitor* visitor) {
         visitor->visit(this);
     }
 };
 
-class Assignment: public Statement {
+
+class Tuple: public Expression {
 public:
-    string id;
-    Expression* expression;
+    vector<Assignment*> assignments;
+    Tuple(vector<Assignment*> assignments): assignments(assignments) {}
 
-    Assignment(string id, Expression* expression):
-        id(id),
-        expression(expression) {}
-
-    void accept(Visitor* visitor) {
+    void accept(ExpressionVisitor* visitor) {
         visitor->visit(this);
     }
 };
@@ -166,20 +186,75 @@ public:
         previousExpression(previousExpression),
         id(id) {}
 
-    void accept(Visitor* visitor) {
+    void accept(ExpressionVisitor* visitor) {
+        visitor->visit(this);
+    }
+};
+
+class FunctionDeclaration: public Assignment {
+public:
+    FunctionType* type;
+
+    FunctionDeclaration(string id, FunctionType* type, Expression* expression):
+    Assignment(id, expression), type(type) {}
+
+    void accept(ExpressionVisitor* visitor) {
+        visitor->visit(this);
+    }
+};
+
+class FunctionCall: public Expression {
+public:
+    string id;
+    Expression* parameter;
+
+    FunctionCall(string id, Expression* parameter): id(id), parameter(parameter) {}
+
+    void accept(ExpressionVisitor* visitor) {
+        visitor->visit(this);
+    }
+};
+
+class InfixFunctionCall: public FunctionCall {
+public:
+    Expression* precedingExpression;
+
+    InfixFunctionCall(Expression* precedingExpression, string id, Expression* parameter):
+        FunctionCall(id, parameter),
+        precedingExpression(precedingExpression) {}
+
+    void accept(ExpressionVisitor* visitor) {
         visitor->visit(this);
     }
 };
 
 class Type: public Expression {
+public:
+    virtual void accept(ExpressionVisitor* visitor) override {
+        accept((TypeVisitor*)visitor);
+    }
+
+    virtual void accept(TypeVisitor* visitor) = 0;
+
+    bool virtual operator ==(Type& other) = 0;
 };
 
-class ReferenceId: public Type {
+class IdReference: public Type {
 public:
     string id;
-    ReferenceId(string id): id(id) {}
+    IdReference(string id): id(id) {}
 
-    void accept(Visitor* visitor) {
+    bool virtual operator ==(Type& other) {
+        IdReference* idRef = dynamic_cast<IdReference*>(&other);
+        if(idRef == nullptr) {
+            return false;
+        }
+
+        return id == idRef->id;
+    }
+
+
+    virtual void accept(TypeVisitor* visitor) {
         visitor->visit(this);
     }
 };
@@ -189,15 +264,39 @@ public:
     string id;
     Type* type;
 
+    bool virtual operator ==(TypedId& other) {
+        return id == other.id &&
+            *type == *other.type;
+    }
+
     TypedId(string id, Type* type): id(id), type(type) {}
 };
 
-class ComplexType: public Type {
+class TupleType: public Type {
 public:
     vector<TypedId> members;
-    ComplexType(vector<TypedId> members): members(members) {}
+    TupleType(vector<TypedId> members): members(members) {}
 
-    void accept(Visitor* visitor) {
+    bool virtual operator ==(Type& other) {
+        TupleType* tupleType = dynamic_cast<TupleType*>(&other);
+        if(tupleType == nullptr) {
+            return false;
+        }
+
+        if(members.size() != tupleType->members.size()) {
+            return false;
+        }
+
+        for(int i = 0; i < members.size(); i++) {
+            if(!(members[i] == tupleType->members[i])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    virtual void accept(TypeVisitor* visitor) {
         visitor->visit(this);
     }
 };
@@ -206,6 +305,12 @@ class FunctionType: public Type {
 public:
     Type* outputType;
     FunctionType(Type* outputType): outputType(outputType) {}
+
+    virtual void accept(TypeVisitor* visitor) {
+        accept((FunctionTypeVisitor*) visitor);
+    }
+
+    virtual void accept(FunctionTypeVisitor* visitor) = 0;
 };
 
 class IdFunctionType: public FunctionType {
@@ -213,77 +318,39 @@ public:
     string id;
     IdFunctionType(string id, Type* outputType): FunctionType(outputType), id(id) {}
 
-    void accept(Visitor* visitor) {
+    bool virtual operator ==(Type& other) {
+        IdFunctionType* idFunctionType = dynamic_cast<IdFunctionType*>(&other);
+        if(idFunctionType == nullptr) {
+            return false;
+        }
+
+        return id == idFunctionType->id &&
+            *outputType == *(idFunctionType->outputType);
+    }
+
+    virtual void accept(FunctionTypeVisitor* visitor) {
         visitor->visit(this);
     }
 };
 
-class ParameterFunctionType: public FunctionType {
+class TupleFunctionType: public FunctionType {
 public:
-    ComplexType* inputType;
-    ParameterFunctionType(ComplexType* inputType, Type* outputType):
+    TupleType* inputType;
+    TupleFunctionType(TupleType* inputType, Type* outputType):
         FunctionType(outputType),
         inputType(inputType) {}
 
-    void accept(Visitor* visitor) {
-        visitor->visit(this);
+    bool virtual operator ==(Type& other) {
+        TupleFunctionType* tupleFunctionType = dynamic_cast<TupleFunctionType*>(&other);
+        if(tupleFunctionType == nullptr) {
+            return false;
+        }
+
+        return inputType == tupleFunctionType->inputType &&
+            *outputType == *(tupleFunctionType->outputType);
     }
-};
 
-class ParameterLessFunctionType: public FunctionType {
-public:
-    ParameterLessFunctionType(Type* outputType): FunctionType(outputType) {}
-
-    void accept(Visitor* visitor) {
-        visitor->visit(this);
-    }
-};
-
-class FunctionCall: public Expression {
-public:
-    string id;
-
-    FunctionCall(string id): id(id) {}
-};
-
-class ParameterLessFunctionCall: public FunctionCall {
-public:
-    ParameterLessFunctionCall(string id): FunctionCall(id) {}
-
-    void accept(Visitor* visitor) {
-        visitor->visit(this);
-    }
-};
-
-class ParametrisedFunctionCall: public FunctionCall {
-public:
-    Expression* parameter;
-
-    ParametrisedFunctionCall(string id, Expression* parameter): FunctionCall(id), parameter(parameter) {}
-
-    void accept(Visitor* visitor) {
-        visitor->visit(this);
-    }
-};
-class Construct: public Expression {
-public:
-    vector<Assignment*> assignments;
-    Construct(vector<Assignment*> assignments): assignments(assignments) {}
-
-    void accept(Visitor* visitor) {
-        visitor->visit(this);
-    }
-};
-class InfixFunctionCall: public Expression {
-public:
-    Expression* precedingExpression;
-    FunctionCall* functionCall;
-
-    InfixFunctionCall(Expression* precedingExpression, FunctionCall* functionCall):
-        precedingExpression(precedingExpression),
-        functionCall(functionCall) {}
-
-    void accept(Visitor* visitor) {
+    virtual void accept(FunctionTypeVisitor* visitor) {
         visitor->visit(this);
     }
 };
