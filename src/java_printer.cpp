@@ -8,7 +8,7 @@ bool isVoid(Type* type);
 
 void JavaPrinter::print(Block* block) {
     auto printInType = new TupleType({TypedId("msg", STRING)});
-    auto type = new TupleFunctionType(printInType, VOID);
+    auto type = new FunctionType(printInType, VOID);
 
     Symbol printSymbol;
     printSymbol.javaName = "print";
@@ -20,47 +20,34 @@ void JavaPrinter::print(Block* block) {
     printStruct.javaName = "PrintStruct";
     structs.push_back(printStruct);
 
-    cout << "class LangD {" << endl;
-    cout << "    public static void main(String[] args) {" << endl;
+    *output << "class LangD {" << endl;
+    *output << "    public static void main(String[] args) {" << endl;
     block->accept(this);
-    cout << "    }" << endl;
+    *output << "    }" << endl;
+
+
+
+    for(FunctionEntry func: functions) {
+        string type = toJavaType(func.outputType);
+        *output << "    private static " << type << " " << func.javaName << "(";
+        *output << toJavaType(func.functionDefinition->inputType) << " input";
+        *output << ") {" << endl;
+        *output << func.javaBody->str();
+        *output << "    }" << endl;
+    }
 
     for(StructEntry entry: structs) {
-        cout << "    private static class " << entry.javaName << " {" << endl;
+        *output << "    private static class " << entry.javaName << " {" << endl;
         for(TypedId member: entry.type->members) {
-            cout << "        public " << toJavaType(member.type) << " " << member.id << ";" << endl;
+            *output << "        public " << toJavaType(member.type) << " " << member.id << ";" << endl;
         }
-        cout << "    }" << endl;
+        *output << "    }" << endl;
     }
 
-    for(FunctionDeclaration* func: functions) {
-        Scope* outerScope = scope;
-        scope = new Scope;
-        scope->parent = outerScope;
-
-        //TODO Check function output type
-        string type = toJavaType(func->type->outputType);
-        string javaName = getSymbol(func->id).javaName;
-        cout << "    private static " << type << " " << javaName << "(";
-
-        printFunctionArguments(func->type);
-
-        cout <<") {" << endl;
-
-        func->expression->accept(this);
-        if(!isVoid(symbolLastExpression.type)) {
-            cout << "        return " << symbolLastExpression.javaName << ";" << endl;
-        }
-
-        cout << "    }" << endl;
-
-        scope = outerScope;
-    }
-
-    cout << "    private static void print(PrintStruct toPrint) {" << endl;
-    cout << "        System.out.print(toPrint.msg);" << endl;
-    cout << "    }" << endl;
-    cout << "}" << endl;
+    *output << "    private static void print(PrintStruct toPrint) {" << endl;
+    *output << "        System.out.print(toPrint.msg);" << endl;
+    *output << "    }" << endl;
+    *output << "}" << endl;
 }
 
 Symbol getSymbol(Scope* scope, string name) {
@@ -154,9 +141,9 @@ void JavaPrinter::endOperation(Type* outputType) {
     symbolLastExpression.javaName = getNextId("id");
     symbolLastExpression.type = outputType;
     if(isVoid(outputType)) {
-        cout << "        ";
+        *output << "        ";
     } else {
-        cout << "        " << toJavaType(symbolLastExpression.type) << " " << symbolLastExpression.javaName << " = ";
+        *output << "        " << toJavaType(symbolLastExpression.type) << " " << symbolLastExpression.javaName << " = ";
     }
 }
 
@@ -166,35 +153,9 @@ void JavaPrinter::error() {
     cerr << "//Error: ";
 }
 
-bool JavaPrinter::printFunctionArguments(FunctionType* type) {
-    IdFunctionType* idFType = dynamic_cast<IdFunctionType*>(type);
-    if(idFType != nullptr) {
-        try {
-            Symbol arg = getSymbol(idFType->id);
-            TupleType* cmplx = dynamic_cast<TupleType*>(arg.type);
-            if(cmplx == nullptr) {
-                error();
-                cerr << idFType->id << " is not a complex type";
-                return false;
-            }
-            TupleFunctionType* pft = new TupleFunctionType(cmplx, type->outputType);
-            return printFunctionArguments(pft);
-        } catch(UnknownSymbol e) {
-            error();
-            cerr << "Unknown symbol " << idFType->id;
-            return false;
-        }
-    }
-
-    TupleFunctionType* pft = dynamic_cast<TupleFunctionType*>(type);
-    if(pft == nullptr) {
-        error();
-        cerr << "Unknown function type";
-        return false;
-    }
-
-    cout << toJavaType(pft->inputType) << " " << "input" ;
-    //cout << toJavaType(member.type) << " " << member.id;
+bool JavaPrinter::printFunctionArguments(TupleType* type) {
+    *output << toJavaType(type) << " " << "input" ;
+    //*output << toJavaType(member.type) << " " << member.id;
 
     return true;
 }
@@ -218,6 +179,18 @@ void JavaPrinter::visit(Assignment* assignment) {
     scope->symbols[assignment->id] = symbolLastExpression;
 }
 
+void JavaPrinter::visit(TypeAssignment* assignment) {
+    if(hasSymbol(assignment->id)) {
+        error();
+        cerr << assignment->id << " is already defined" << endl;
+        return;
+    }
+
+    //assignment->expression->accept(this);
+    scope->symbols[assignment->id] = symbolLastExpression;
+}
+
+
 void JavaPrinter::visit(PlusOp* plusOp) {
     plusOp->lhs->accept(this);
     Symbol lhs = symbolLastExpression;
@@ -236,7 +209,7 @@ void JavaPrinter::visit(PlusOp* plusOp) {
     }
 
     endOperation(lhs.type);
-    cout << lhs.javaName << " + " << rhs.javaName << ";" << endl;
+    *output << lhs.javaName << " + " << rhs.javaName << ";" << endl;
 }
 
 void JavaPrinter::visit(MinusOp* minusOp) {
@@ -256,7 +229,7 @@ void JavaPrinter::visit(MinusOp* minusOp) {
     }
 
     endOperation(lhs.type);
-    cout << lhs.javaName << " - " << rhs.javaName << ";" << endl;
+    *output << lhs.javaName << " - " << rhs.javaName << ";" << endl;
 }
 
 void JavaPrinter::visit(TimesOp* timesOp) {
@@ -276,7 +249,7 @@ void JavaPrinter::visit(TimesOp* timesOp) {
     }
 
     endOperation(lhs.type);
-    cout << lhs.javaName << " * " << rhs.javaName << ";" << endl;
+    *output << lhs.javaName << " * " << rhs.javaName << ";" << endl;
 }
 
 void JavaPrinter::visit(Negation* negation) {
@@ -290,17 +263,17 @@ void JavaPrinter::visit(Negation* negation) {
     }
 
     endOperation(expr.type);
-    cout << " -" << expr.javaName << ";" << endl;
+    *output << " -" << expr.javaName << ";" << endl;
 }
 
 void JavaPrinter::visit(StringValue* negation) {
     endOperation(STRING);
-    cout << negation->value << ";" << endl;
+    *output << negation->value << ";" << endl;
 }
 
 void JavaPrinter::visit(IntValue* intValue) {
     endOperation(INT);
-    cout << intValue->value << ";" << endl;
+    *output << intValue->value << ";" << endl;
 }
 
 void JavaPrinter::visit(Tuple* tuple) {
@@ -318,9 +291,9 @@ void JavaPrinter::visit(Tuple* tuple) {
     string className = getOrCreateStruct(tupleType);
     string javaName = getNextId("id");
 
-    cout << "        " << className << " " << javaName << " = " << " new " << className << "();" << endl;
+    *output << "        " << className << " " << javaName << " = " << " new " << className << "();" << endl;
     for(int i = 0; i < typedIds.size(); i++) {
-        cout << "        " << javaName << "." << typedIds[i].id << " = " << javaNames[i] << ";" << endl;
+        *output << "        " << javaName << "." << typedIds[i].id << " = " << javaNames[i] << ";" << endl;
     }
 
     symbolLastExpression.javaName = javaName;
@@ -341,7 +314,7 @@ void JavaPrinter::visit(MemberSelection* memberSelection) {
         if(member.id == memberSelection->id) {
             string javaName = symbolLastExpression.javaName;
             endOperation(member.type);
-            cout << javaName << "." << memberSelection->id << ";" << endl;
+            *output << javaName << "." << memberSelection->id << ";" << endl;
             return;
         }
     }
@@ -350,21 +323,49 @@ void JavaPrinter::visit(MemberSelection* memberSelection) {
     cerr << "Complex type has no member " + memberSelection->id;
 }
 
-void JavaPrinter::visit(FunctionDeclaration* functionDeclaration) {
-    functions.push_back(functionDeclaration);
+void JavaPrinter::visit(FunctionDefinition* functionDefinition) {
+    FunctionEntry entry;
+    entry.functionDefinition = functionDefinition;
+    entry.javaBody = new stringbuf();
+    entry.javaName = getNextId("func");
 
-    Symbol functionSymbol;
-    functionSymbol.type = functionDeclaration->type;
-    functionSymbol.javaName = getNextId(functionDeclaration->id);
 
-    scope->symbols[functionDeclaration->id] = functionSymbol;
+    Scope* outerScope = scope;
+    scope = new Scope;
+    scope->parent = outerScope;
+
+    ostream* oldOutput = output;
+    output = new ostream(entry.javaBody);
+
+    scope->symbols["input"].javaName = "input";
+    scope->symbols["input"].type = functionDefinition->inputType;
+
+    for(TypedId member: functionDefinition->inputType->members) {
+        this->visit(new Assignment(member.id, new MemberSelection(new IdReference("input"), member.id)));
+    }
+
+    functionDefinition->body->accept(this);
+
+    if(!isVoid(symbolLastExpression.type)) {
+        *output << "        return " << symbolLastExpression.javaName << ";" << endl;
+    }
+
+    Type* outputType = symbolLastExpression.type;
+    entry.outputType = outputType;
+    functions.push_back(entry);
+
+    scope = outerScope;
+    output = oldOutput;
+
+    symbolLastExpression.javaName = entry.javaName;
+    symbolLastExpression.type = new FunctionType(functionDefinition->inputType, entry.outputType);
 }
 
 void JavaPrinter::visit(FunctionCall* functionCall) {
     try {
         Symbol functionSym = getSymbol(functionCall->id);
 
-        TupleFunctionType* functionType = dynamic_cast<TupleFunctionType*>(functionSym.type);
+        FunctionType* functionType = dynamic_cast<FunctionType*>(functionSym.type);
         if(functionType == nullptr) {
             error();
             cerr << functionCall->id << " is not a function";
@@ -376,12 +377,12 @@ void JavaPrinter::visit(FunctionCall* functionCall) {
 
         if(!(*input.type == *functionType->inputType)) {
             error();
-            cerr << "type of " << input.javaName << " does not match the type of function " << functionCall->id;
+            cerr << "type of " << input.javaName << " does not match the type of function " << functionCall->id << endl;
             return;
         }
 
         endOperation(functionType->outputType);
-        cout << functionSym.javaName << "(" << input.javaName << ");" << endl;
+        *output << functionSym.javaName << "(" << input.javaName << ");" << endl;
     } catch(UnknownSymbol e) {
         error();
         cerr << functionCall->id << " is unknown";
@@ -393,7 +394,7 @@ void JavaPrinter::visit(InfixFunctionCall* infixFunctionCall) {
     infixFunctionCall->precedingExpression->accept(this);
     infixFunctionCall->parameter->accept(this);
 
-    cout << "//Here comes the infix" << endl;
+    *output << "//Here comes the infix" << endl;
 }
 
 void JavaPrinter::visit(IdReference* idReference) {
@@ -404,7 +405,3 @@ void JavaPrinter::visit(IdReference* idReference) {
         cerr << idReference->id << " is unknown";
     }
 }
-
-void JavaPrinter::visit(TupleType* tupleType){}
-void JavaPrinter::visit(IdFunctionType* IdFunctionType){}
-void JavaPrinter::visit(TupleFunctionType* tupleFunctionType){}

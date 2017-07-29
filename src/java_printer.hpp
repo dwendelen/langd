@@ -5,6 +5,8 @@
 #include <map>
 #include <exception>
 #include <list>
+#include <iostream>
+#include <sstream>
 
 using namespace std;
 
@@ -31,8 +33,10 @@ public:
 
 class FunctionEntry {
 public:
-    FunctionDeclaration* declaration;
+    FunctionDefinition* functionDefinition;
     string javaName;
+    stringbuf* javaBody;
+    Type* outputType;
 };
 
 
@@ -42,6 +46,7 @@ private:
     IdReference* INT = new IdReference("Int");
     IdReference* VOID = new IdReference("Void");
 
+    ostream* output = &cout;
 
     Symbol symbolLastExpression;
     int lastId = 0;
@@ -53,7 +58,7 @@ private:
     list<StructEntry> structs;
     string getOrCreateStruct(TupleType* type);
 
-    list<FunctionDeclaration*> functions;
+    list<FunctionEntry> functions;
 
     bool isInt(Type* type);
     bool isVoid(Type* type);
@@ -65,12 +70,14 @@ private:
 
     void error();
 
-    bool printFunctionArguments(FunctionType* type);
+    bool printFunctionArguments(TupleType* type);
 public:
     void print(Block* block);
 
     virtual void visit(Block* block);
     virtual void visit(Assignment* assignment);
+    virtual void visit(TypeAssignment* typeAssignment);
+
 
     virtual void visit(PlusOp* plusOp);
     virtual void visit(MinusOp* minusOp);
@@ -82,15 +89,11 @@ public:
     virtual void visit(Tuple* construct);
     virtual void visit(MemberSelection* memberSelection);
 
-    virtual void visit(FunctionDeclaration* functionDeclaration);
+    virtual void visit(FunctionDefinition* functionDefinition);
     virtual void visit(FunctionCall* functionCall);
     virtual void visit(InfixFunctionCall* infixFunctionCall);
 
     virtual void visit(IdReference* idReference);
-    virtual void visit(TupleType* complexType);
-
-    virtual void visit(IdFunctionType* IdFunctionType);
-    virtual void visit(TupleFunctionType* parameterFunctionType);
 };
 
 

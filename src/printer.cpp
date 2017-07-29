@@ -11,7 +11,7 @@ void Printer::printElement(string element) {
     cout << rootPrefix << element << endl;
 }
 
-void Printer::printUnary(string op, Expression* param) {
+template<class T> void Printer::printUnary(string op, T* param) {
     string oldBeforeRootPrefix = beforeRootPrefix;
     string oldRootPrefix = rootPrefix;
     string oldAfterRootPrefix = afterRootPrefix;
@@ -38,7 +38,7 @@ void Printer::printUnary(string op, Expression* param) {
     afterRootPrefix = oldAfterRootPrefix;
 }
 
-void Printer::printBinary(string op, Expression* lhs, Expression* rhs) {
+template<class L, class R> void Printer::printBinary(string op, L* lhs, R* rhs) {
     string oldBeforeRootPrefix = beforeRootPrefix;
     string oldRootPrefix = rootPrefix;
     string oldAfterRootPrefix = afterRootPrefix;
@@ -96,6 +96,11 @@ void Printer::visit(Assignment* assignment) {
     printUnary(assignment->id + " = ", assignment->expression);
 }
 
+void Printer::visit(TypeAssignment* assignment) {
+    printUnary(assignment->id + " = ", assignment->type);
+}
+
+
 void Printer::visit(PlusOp* plusOp) {
     printBinary("+", plusOp->lhs, plusOp->rhs);
 }
@@ -128,8 +133,8 @@ void Printer::visit(MemberSelection* memberSelection) {
     printUnary("select(" + memberSelection->id + ") ", memberSelection->previousExpression);
 }
 
-void Printer::visit(FunctionDeclaration* functionDeclaration) {
-    printBinary(functionDeclaration->id + " = ", functionDeclaration->type, functionDeclaration->expression);
+void Printer::visit(FunctionDefinition* functionDefinition) {
+    printBinary("=> ", functionDefinition->inputType, functionDefinition->body);
 }
 
 void Printer::visit(FunctionCall* functionCall) {
@@ -145,13 +150,9 @@ void Printer::visit(IdReference* idRef) {
 }
 
 void Printer::visit(TupleType* complexType) {
-    printList("complex", complexType->members);
+    printList("tuple", complexType->members);
 }
 
-void Printer::visit(IdFunctionType* idFunctionType) {
-    printUnary("id(" + idFunctionType->id + ") => ", idFunctionType->outputType);
-}
-
-void Printer::visit(TupleFunctionType* parameterFunctionType) {
-    printBinary("=> ", parameterFunctionType->inputType, parameterFunctionType->outputType);
+void Printer::visit(FunctionType* functionType) {
+    printBinary("=> ", functionType->inputType, functionType->outputType);
 }

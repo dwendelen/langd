@@ -3,7 +3,7 @@
 
 #include "ast.hpp"
 
-class Printer: public ExpressionVisitor {
+class Printer: public ExpressionVisitor, public TypeVisitor {
 private:
     string beforeRootPrefix = "";
     string afterRootPrefix = "";
@@ -13,13 +13,15 @@ private:
     template <typename T> void printList(string op, vector<T> list);
     void printItem(Expression* expression);
     void printItem(TypedId typedId);
-    void printUnary(string op, Expression* param);
-    void printBinary(string op, Expression* lhs, Expression* rhs);
+    template <class T> void printUnary(string op, T* param);
+    template <class L, class R> void printBinary(string op, L* lhs, R* rhs);
 public:
     void print(Block* block);
 
     virtual void visit(Block* block);
     virtual void visit(Assignment* assignment);
+    virtual void visit(TypeAssignment* typeAssignment);
+
 
     virtual void visit(PlusOp* plusOp);
     virtual void visit(MinusOp* minusOp);
@@ -31,15 +33,13 @@ public:
     virtual void visit(Tuple* construct);
     virtual void visit(MemberSelection* memberSelection);
 
-    virtual void visit(FunctionDeclaration* functionDeclaration);
+    virtual void visit(FunctionDefinition* functionDefinition);
     virtual void visit(FunctionCall* functionCall);
     virtual void visit(InfixFunctionCall* infixFunctionCall);
 
     virtual void visit(IdReference* idReference);
     virtual void visit(TupleType* complexType);
-
-    virtual void visit(IdFunctionType* IdFunctionType);
-    virtual void visit(TupleFunctionType* parameterFunctionType);
+    virtual void visit(FunctionType* functionType);
 };
 
 #endif

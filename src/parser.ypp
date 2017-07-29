@@ -35,7 +35,7 @@
     int integer;
 }
 
-%token LET DEF
+%token LET DEF TYPE
 %token PLUS MINUS TIMES
 %token LPARENT RPARENT EQUALS SEMICOLON COLON ARROW DOT COMMA
 %token <integer> INT
@@ -45,7 +45,7 @@
 %type <block> program
 %type <assignment> assignment letOrDef
 %type <expressions> expressionChain
-%type <expression> terminatedExpression expression term factor negation smallestThing memberChain tuple functionCallLike
+%type <expression> terminatedExpression expression term factor negation smallestThing memberChain functionDefinition tuple functionCallLike
 %type <functionCall> functionCall
 
 %type <type> type typeWithoutFunctionType
@@ -74,10 +74,15 @@ expressionChain:
     ;
 terminatedExpression:
       expression SEMICOLON              {   $$ = $1; }
+    | TYPE ID EQUALS type SEMICOLON     {   $$ = new TypeAssignment(*$2, $4); }
     | letOrDef SEMICOLON                {   $$ = $1; }
     ;
 expression:
-    term                                {   $$ = $1; }
+      term                              {   $$ = $1; }
+    | functionDefinition                {   $$ = $1; }
+    ;
+functionDefinition:
+      tupleType ARROW expression        {   $$ = new FunctionDefinition($1, $3); }
     ;
 term:
       term PLUS factor                  {   $$ = new PlusOp($1, $3); }
@@ -98,8 +103,7 @@ functionCallLike:
     | memberChain
     ;
 functionCall:
-      ID LPARENT RPARENT                {   $$ = new FunctionCall(*$1, new TupleType({})); }
-    | ID memberChain                    {   $$ = new FunctionCall(*$1, $2); }
+      ID functionCallLike               {   $$ = new FunctionCall(*$1, $2); }
     ;
 memberChain:
 	  memberChain DOT ID                {   $$ = new MemberSelection($1, *$3); }
@@ -110,7 +114,7 @@ smallestThing:
       LPARENT expression RPARENT        {   $$ = $2; }
     | INT                               {   $$ = new IntValue($1); }
     | STRING                            {   $$ = new StringValue(*$1); }
-    | type                              {   $$ = $1; }
+    | ID                                {   $$ = new IdReference(*$1); }
     | tuple                             {   $$ = $1; }
     ;
 letOrDef:
@@ -120,7 +124,6 @@ letOrDef:
     ;
 assignment:
       ID EQUALS expression              {   $$ = new Assignment(*$1, $3); }
-    | ID COLON functionType EQUALS expression {    $$ = new FunctionDeclaration(*$1, $3, $5); }
     //| ID COLON typeWithoutFunctionType EQUALS expression             { $$ = new TypedAssignment(*$1, $3); }
     ;
 type:
@@ -130,6 +133,7 @@ type:
 typeWithoutFunctionType:
       ID                                {   $$ = new IdReference(*$1); }
     | tupleType                         {   $$ = $1; }
+    | LPARENT type RPARENT              {   $$ = $2; }
     //| ID L_SQ_BRACKET type R_SQ_BRACKET {   $$ = new ArrayType(*$1, $3); }
     ;
 tupleType:
@@ -149,9 +153,7 @@ typedId:
       ID COLON type                     {   $$ = new TypedId(*$1, $3); }
     ;
 functionType:
-      ID ARROW type                     {   $$ = new IdFunctionType(*$1, $3); }
-    | tupleType ARROW type              {   $$ = new TupleFunctionType($1, $3); }
-    | LPARENT RPARENT ARROW type        {   $$ = new TupleFunctionType(new TupleType({}), $4); }
+      typeWithoutFunctionType ARROW type{   $$ = new FunctionType($1, $3); }
     ;
 tuple:
       LPARENT constructItems RPARENT    {   $$ = new Tuple(*$2); }

@@ -11,15 +11,16 @@
 %%
 "def"                       {   return DEF;         }
 "let"                       {   return LET;         }
-[1-9][0-9]*                 {
+"type"                      {   return TYPE;        }
+[1-9][0-9]*|0               {
                                 yylval.integer = stoi(yytext);
                                 return INT;
                             }
-"-"                         {    return MINUS;        }
-"+"                         {    return PLUS;        }
-"*"                         {   return TIMES;        }
+"-"                         {   return MINUS;       }
+"+"                         {   return PLUS;        }
+"*"                         {   return TIMES;       }
 "("                         {   return LPARENT;     }
-")"                         {    return RPARENT;     }
+")"                         {   return RPARENT;     }
 "="                         {   return EQUALS;      }
 ";"                         {   return SEMICOLON;   }
 ":"                         {   return COLON;       }
@@ -30,7 +31,7 @@
                                 yylval.string = new string(yytext);
                                 return STRING;
                             }
-[_a-zA-Z][-_a-zA-Z0-9]*     {
+[_a-zA-Z][_a-zA-Z0-9]*     {
                                 yylval.string = new string(yytext);
                                 return ID;
                             }
