@@ -1,5 +1,4 @@
-#ifndef LANGD_AST_H
-#define LANGD_AST_H
+#pragma once
 
 #include <vector>
 #include <string>
@@ -332,5 +331,3 @@ public:
     }
 
 };
-
-#endif

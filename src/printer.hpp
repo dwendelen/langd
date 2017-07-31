@@ -1,5 +1,4 @@
-#ifndef LANGD_PRINTER_H
-#define LANGD_PRINTER_H
+#pragma once
 
 #include "ast.hpp"
 
@@ -41,5 +40,3 @@ public:
     virtual void visit(TupleType* complexType);
     virtual void visit(FunctionType* functionType);
 };
-
-#endif

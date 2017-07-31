@@ -1,5 +1,4 @@
-#ifndef LANGD_JAVA_PRINTER_H
-#define LANGD_JAVA_PRINTER_H
+#pragma once
 
 #include "ast.hpp"
 #include <map>
@@ -95,6 +94,3 @@ public:
 
     virtual void visit(IdReference* idReference);
 };
-
-
-#endif
