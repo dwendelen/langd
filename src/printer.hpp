@@ -1,6 +1,8 @@
 #pragma once
 
-#include "ast.hpp"
+#include "parser/ast.hpp"
+
+using namespace langd::parser;
 
 class Printer: public ExpressionVisitor, public TypeVisitor {
 private:

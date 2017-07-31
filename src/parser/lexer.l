@@ -2,7 +2,7 @@
     #include <vector>
     #include <string>
     #include <iostream>
-    #include "ast.hpp"
+    #include "parser/ast.hpp"
     #include "parser.hpp"
 
     using namespace std;

@@ -2,11 +2,13 @@
     #include <string>
     #include <iostream>
     #include <vector>
-    #include "ast.hpp"
+    #include "parser/ast.hpp"
+
+    using namespace std;
+    using namespace langd::parser;
 
     int yylex();
     Block* parsedProgram;
-    using namespace std;
 
     void yyerror(char const * msg) {
         cerr << msg << endl;
@@ -16,22 +18,22 @@
 %}
 
 %union {
-    Expression* expression;
-    vector<Expression*>* expressions;
-    Assignment* assignment;
-    vector<Assignment*>* assignments;
+    langd::parser::Expression* expression;
+    std::vector<langd::parser::Expression*>* expressions;
+    langd::parser::Assignment* assignment;
+    std::vector<langd::parser::Assignment*>* assignments;
 
-    Block* block;
+    langd::parser::Block* block;
 
-    Type* type;
-    IdReference* idReference;
-    TupleType* tupleType;
-    vector<TypedId>* typedIds;
-    TypedId* typedId;
-    FunctionType* functionType;
-    FunctionCall* functionCall;
+    langd::parser::Type* type;
+    langd::parser::IdReference* idReference;
+    langd::parser::TupleType* tupleType;
+    std::vector<langd::parser::TypedId>* typedIds;
+    langd::parser::TypedId* typedId;
+    langd::parser::FunctionType* functionType;
+    langd::parser::FunctionCall* functionCall;
 
-    string* string;
+    std::string* string;
     int integer;
 }
 

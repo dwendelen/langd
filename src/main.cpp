@@ -1,10 +1,12 @@
-#include "ast.hpp"
+#include "parser/ast.hpp"
 #include "parser.hpp"
 #include "printer.hpp"
-#include "java_printer.hpp"
+#include "java/java_printer.hpp"
 #include <iostream>
 
+
 using namespace std;
+using namespace langd::java;
 
 extern Block* parsedProgram;
 
