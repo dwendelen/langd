@@ -51,6 +51,33 @@ namespace langd {
             std::string variable;
         };
 
+        class TypeNotFoundException : public SemanticException {
+        public:
+            explicit TypeNotFoundException(std::string typeName)
+                    : SemanticException("Could not find " + typeName),
+                      typeName(typeName) {}
+
+            std::string getTypeName() {
+                return typeName;
+            }
+
+        private:
+            std::string typeName;
+        };
+
+        class TypeAlreadyDefined : public SemanticException {
+        public:
+            explicit TypeAlreadyDefined(std::string typeName)
+                    : SemanticException(typeName + " is already defined."),
+                      typeName(typeName) {}
+
+            std::string getTypeName() {
+                return typeName;
+            }
+
+        private:
+            std::string typeName;
+        };
     }
 }
 

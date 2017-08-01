@@ -32,7 +32,7 @@ set(SRC
         src/semantic/ExpressionVisitor.cpp
         src/semantic/ExpressionVisitor.hpp
         src/semantic/Type.cpp
-        src/semantic/Type.hpp)
+        src/semantic/Type.hpp src/java/JavaPrinter.cpp src/java/JavaPrinter.hpp src/semantic/TypeVisitor.cpp src/semantic/TypeVisitor.hpp)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/src

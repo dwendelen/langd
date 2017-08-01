@@ -3,10 +3,13 @@
 #include "printer.hpp"
 #include "java/java_printer.hpp"
 #include <iostream>
+#include <semantic/Analyser.hpp>
+#include <java/JavaPrinter.hpp>
 
 
 using namespace std;
 using namespace langd::java;
+using namespace langd;
 
 extern Block* parsedProgram;
 
@@ -18,8 +21,13 @@ int main() {
         printer->print(parsedProgram);
         cout << "*/" << endl;
 
+        semantic::Analyser* analyser = new semantic::Analyser();
+        auto analysedBlock = analyser->analyse(parsedProgram);
+        
         JavaPrinter* javaPrinter = new JavaPrinter();
-        javaPrinter->print(parsedProgram);
+        javaPrinter->print(analysedBlock);
+        //JavaPrinter_Old* javaPrinter = new JavaPrinter_Old();
+        //javaPrinter->print(parsedProgram);
     }
     return result;
 }

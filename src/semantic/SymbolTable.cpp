@@ -15,25 +15,16 @@ namespace langd {
                 throw SymbolNotFoundException(name);
             }
 
-            bool hasVariable(string name) override {
-                return false;
-            }
-
             void registerVariable(Variable *variable) override {
-                //TODO THROW EXCEPTION
+                throw logic_error("You can not register a variable");
             }
 
             Type *getType(string name) override {
-                //TODO THROW EXCEPTION
-                return nullptr;
-            }
-
-            bool hasType(string name) override {
-                return false;
+                throw TypeNotFoundException(name);
             }
 
             void registerType(string name, Type *type) override {
-                //TODO THROW EXCEPTION
+                throw logic_error("You can not register a type");
             }
 
             Scope *getParent() override {
@@ -53,15 +44,10 @@ namespace langd {
                 return variable->second;
             }
 
-            bool hasVariable(string name) override {
-                unsigned long cnt = variables.count(name);
-                if (cnt == 0) {
-                    return parent->hasVariable(name);
-                }
-                return true;
-            }
-
             void registerVariable(Variable *variable) override {
+                if(hasVariable(variable->getName())) {
+                    throw VariableAlreadyDefined(variable->getName());
+                }
                 variables[variable->getName()] = variable;
             }
 
@@ -73,15 +59,10 @@ namespace langd {
                 return type->second;
             }
 
-            bool hasType(string name) override {
-                unsigned long cnt = types.count(name);
-                if (cnt == 0) {
-                    return parent->hasType(name);
-                }
-                return true;
-            }
-
             void registerType(string name, Type *type) override {
+                if(hasType(name)) {
+                    throw TypeAlreadyDefined(name);
+                }
                 types[name] = type;
             }
 
@@ -93,6 +74,14 @@ namespace langd {
             map<string, Type *> types;
 
             Scope *parent;
+
+            bool hasVariable(string name) {
+                return variables.count(name) != 0;
+            }
+
+            bool hasType(string name) {
+                return types.count(name) != 0;
+            }
         };
 
         SymbolTable::SymbolTable(): innerScope(new DefaultScope(new NullScope())) {
@@ -105,15 +94,7 @@ namespace langd {
             return innerScope->getVariable(name);
         }
 
-        bool SymbolTable::hasVariable(string name) {
-            return innerScope->hasVariable(name);
-        }
-
         void SymbolTable::registerVariable(Variable *variable) {
-            if(hasVariable(variable->getName())) {
-                throw VariableAlreadyDefined(variable->getName());
-            }
-
             innerScope->registerVariable(variable);
         }
 
@@ -125,14 +106,7 @@ namespace langd {
             return innerScope->getType(name);
         }
 
-        bool SymbolTable::hasType(string name) {
-            return innerScope->hasType(name);
-        }
-
         void SymbolTable::registerType(string name, Type *type) {
-            if(hasType(name)) {
-                //TODO THROW EXCEPTION
-            }
             innerScope->registerType(name, type);
         }
 

@@ -9,10 +9,10 @@
 #include <utility>
 #include <vector>
 #include "Type.hpp"
+#include "ExpressionVisitor.hpp"
 
 namespace langd {
     namespace semantic {
-
         class Closure;
 
         class Expression;
@@ -49,10 +49,10 @@ namespace langd {
 
         class FunctionDefinition;
 
-
         class Expression {
         public:
             virtual Type *getType() = 0;
+            virtual void accept(ExpressionVisitor* visitor) = 0;
         };
 
         class Block : public Expression {
@@ -60,8 +60,16 @@ namespace langd {
         public:
             explicit Block(std::vector<Expression *> expressions) : expressions(expressions) {}
 
+            std::vector<Expression *> getExpressions() {
+                return expressions;
+            }
+
             Type *getType() override {
                 return expressions.back()->getType();
+            }
+
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
             }
 
         private:
@@ -84,6 +92,10 @@ namespace langd {
                 return expression->getType();
             }
 
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
+            }
+
         private:
             std::string name;
             Expression *expression;
@@ -99,6 +111,10 @@ namespace langd {
 
             Type *getType() override {
                 return type;
+            }
+
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
             }
 
         private:
@@ -133,6 +149,10 @@ namespace langd {
             IntegerType *getType() override {
                 return &INTEGER;
             }
+
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
+            }
         };
 
         class MinusOperation : public BinaryOperation {
@@ -143,6 +163,10 @@ namespace langd {
 
             IntegerType *getType() override {
                 return &INTEGER;
+            }
+
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
             }
         };
 
@@ -155,6 +179,10 @@ namespace langd {
             IntegerType *getType() override {
                 return &INTEGER;
             }
+
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
+            }
         };
 
         class Concatenation : public BinaryOperation {
@@ -166,6 +194,10 @@ namespace langd {
             StringType *getType() override {
                 return &STRING;
             }
+
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
+            }
         };
 
         class Negation : public Expression {
@@ -174,8 +206,16 @@ namespace langd {
 
             }
 
+            Expression *getExpression() {
+                return expression;
+            }
+
             IntegerType *getType() override {
                 return &INTEGER;
+            }
+
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
             }
 
         private:
@@ -196,6 +236,10 @@ namespace langd {
             StringType *getType() override {
                 return &STRING;
             };
+
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
+            }
         private:
             std::string value;
         };
@@ -205,12 +249,35 @@ namespace langd {
         public:
             explicit IntConstant(int value) : value(value) {}
 
+            int getValue() {
+                return value;
+            }
+
             IntegerType *getType() override {
                 return &INTEGER;
             }
 
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
+            }
+
         private:
             int value;
+        };
+
+        class TupleElement {
+        public:
+            TupleElement(std::string name, Expression *expression): name(name), expression(expression) {}
+            std::string getName() {
+                return name;
+            }
+            Expression* getExpression() {
+                return expression;
+            }
+
+        private:
+            std::string name;
+            Expression *expression;
         };
 
         class Tuple : public Expression {
@@ -222,49 +289,67 @@ namespace langd {
             }
 
             TupleType *getType() override {
-                return nullptr;
+                std::vector<TupleTypeMember> members;
+                for (TupleElement element: elements) {
+                    members.push_back(TupleTypeMember(element.getName(), element.getExpression()->getType()));
+                }
+                return new TupleType(members);
+            }
+
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
             }
 
         private:
             std::vector<TupleElement> elements;
         };
 
-        class TupleElement {
-        public:
-            TupleElement(std::string name, Expression *expression) {}
-        };
-
         class MemberSelection : public Expression {
         public:
             MemberSelection(Expression *expression, TupleTypeMember element)
-                    : element(element) {}
+                    : expression(expression), element(element) {}
+
+            Expression *getExpression() {
+                return expression;
+            }
+
+            TupleTypeMember getElement() {
+                return element;
+            }
 
             Type *getType() override {
                 return element.getType();
             }
 
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
+            }
+
         private:
-            Tuple *tuple;
+            Expression *expression;
             TupleTypeMember element;
         };
 
         class Closure {
         private:
-
         };
 
         class FunctionCall : public Expression {
         public:
-            FunctionCall(std::string function, Expression *input, FunctionType *type)
+            FunctionCall(std::string function, Expression *input, Type *type)
                     : function(function), input(input), type(type) {}
 
-            FunctionType *getType() override {
+            Type *getType() override {
                 return type;
+            }
+
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
             }
 
         private:
             std::string function;
-            FunctionType *type;
+            Type *type;
             Expression *input;
         };
 
@@ -274,6 +359,10 @@ namespace langd {
 
             FunctionType *getType() override {
                 return type;
+            }
+
+            void accept(ExpressionVisitor *visitor) override {
+                visitor->visit(this);
             }
 
         private:

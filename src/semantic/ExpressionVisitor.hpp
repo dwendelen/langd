@@ -5,42 +5,67 @@
 #ifndef LANGD_EXPRESSIONVISITOR_HPP
 #define LANGD_EXPRESSIONVISITOR_HPP
 
-#include "Expression.hpp"
-
 namespace langd {
     namespace semantic {
+        class Block;
+
+        class Assignment;
+
+        class VariableReference;
+
+        class PlusOperation;
+
+        class MinusOperation;
+
+        class TimesOperation;
+
+        class Concatenation;
+
+        class Negation;
+
+        class StringConstant;
+
+        class IntConstant;
+
+        class Tuple;
+
+        class TupleElement;
+
+        class MemberSelection;
+
+        class FunctionCall;
+
+        class FunctionDefinition;
+
         class ExpressionVisitor {
-            virtual void accept(Block *expression) = 0;
+        public:
+            virtual void visit(Block *expression) = 0;
 
-            virtual void accept(Assignment *expression) = 0;
+            virtual void visit(Assignment *expression) = 0;
 
-            virtual void accept(VariableReference *expression) = 0;
+            virtual void visit(VariableReference *expression) = 0;
 
-            virtual void accept(BinaryOperation *expression) = 0;
+            virtual void visit(PlusOperation *expression) = 0;
 
-            virtual void accept(PlusOperation *expression) = 0;
+            virtual void visit(MinusOperation *expression) = 0;
 
-            virtual void accept(MinusOperation *expression) = 0;
+            virtual void visit(TimesOperation *expression) = 0;
 
-            virtual void accept(TimesOperation *expression) = 0;
+            virtual void visit(Concatenation *expression) = 0;
 
-            virtual void accept(Concatenation *expression) = 0;
+            virtual void visit(Negation *expression) = 0;
 
-            virtual void accept(Negation *expression) = 0;
+            virtual void visit(StringConstant *expression) = 0;
 
-            virtual void accept(StringConstant *expression) = 0;
+            virtual void visit(IntConstant *expression) = 0;
 
-            virtual void accept(IntConstant *expression) = 0;
+            virtual void visit(Tuple *expression) = 0;
+            
+            virtual void visit(MemberSelection *expression) = 0;
 
-            virtual void accept(Tuple *expression) = 0;
+            virtual void visit(FunctionCall *expression) = 0;
 
-            virtual void accept(TupleElement *expression) = 0;
-
-            virtual void accept(MemberSelection *expression) = 0;
-
-            virtual void accept(FunctionCall *expression) = 0;
-
-            virtual void accept(FunctionDefinition *expression) = 0;
+            virtual void visit(FunctionDefinition *expression) = 0;
         };
     }
 }

@@ -33,7 +33,7 @@ namespace langd {
                 return false;
             }
 
-            for(int i = 0; members.size(); i++) {
+            for(int i = 0; i < members.size(); i++) {
                 if(!members[i].isAssignableFrom(otherTuple->members[i])) {
                     return false;
                 }

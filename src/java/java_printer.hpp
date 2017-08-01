@@ -44,7 +44,7 @@ namespace langd{
         };
 
 
-        class JavaPrinter : public ExpressionVisitor {
+        class JavaPrinter_Old : public ExpressionVisitor {
         private:
             IdReference *STRING = new IdReference("String");
             IdReference *INT = new IdReference("Int");

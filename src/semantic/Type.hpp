@@ -7,6 +7,7 @@
 
 #include <string>
 #include <vector>
+#include "TypeVisitor.hpp"
 
 namespace langd {
     namespace semantic {
@@ -28,6 +29,7 @@ namespace langd {
         class Type {
         public:
             virtual bool isAssignableFrom(Type * other) = 0;
+            virtual void accept(TypeVisitor* visitor) = 0;
             virtual ~Type() = default;
         };
 
@@ -35,18 +37,30 @@ namespace langd {
         class VoidType : public Type {
         public:
             bool isAssignableFrom(Type *other) override;
+
+            void accept(TypeVisitor *visitor) override {
+                visitor->visit(this);
+            }
         };
 
 
         class StringType : public Type {
         public:
             bool isAssignableFrom(Type *other) override;
+
+            void accept(TypeVisitor *visitor) override {
+                visitor->visit(this);
+            }
         };
 
 
         class IntegerType : public Type {
         public:
             bool isAssignableFrom(Type *other) override;
+
+            void accept(TypeVisitor *visitor) override {
+                visitor->visit(this);
+            }
         };
 
 
@@ -59,6 +73,10 @@ namespace langd {
             }
 
             bool isAssignableFrom(Type *other) override;
+
+            void accept(TypeVisitor *visitor) override {
+                visitor->visit(this);
+            }
 
         private:
             std::vector<TupleTypeMember> members;
@@ -78,7 +96,6 @@ namespace langd {
             }
 
             bool isAssignableFrom(TupleTypeMember other);
-
         private:
             std::string name;
             Type *type;
@@ -90,7 +107,19 @@ namespace langd {
             FunctionType(TupleType *inputType, Type *outputType)
                     : inputType(inputType), outputType(outputType) {}
 
+            TupleType *getInputType() {
+                return inputType;
+            }
+
+            Type *getOutputType() {
+                return outputType;
+            }
+
             bool isAssignableFrom(Type *other) override;
+
+            void accept(TypeVisitor *visitor) override {
+                visitor->visit(this);
+            }
 
         private:
             TupleType *inputType;

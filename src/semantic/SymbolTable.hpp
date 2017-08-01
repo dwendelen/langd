@@ -37,11 +37,9 @@ namespace langd {
         class Scope {
         public:
             virtual Variable* getVariable(std::string name) = 0;
-            virtual bool hasVariable(std::string name) = 0;
             virtual void registerVariable(Variable *variable) = 0;
 
             virtual Type* getType(std::string name) = 0;
-            virtual bool hasType(std::string name) = 0;
             virtual void registerType(std::string name, Type* type) = 0;
 
             virtual Scope *getParent() = 0;
@@ -52,11 +50,9 @@ namespace langd {
             SymbolTable();
 
             Variable* getVariable(std::string name);
-            bool hasVariable(std::string name);
             void registerVariable(Variable *variable);
 
             Type* getType(std::string name);
-            bool hasType(std::string name);
             void registerType(std::string name, Type* type);
 
             void pushScope();

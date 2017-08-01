@@ -12,7 +12,7 @@ namespace langd {
 
         bool isVoid(Type *type);
 
-        void JavaPrinter::print(Block *block) {
+        void JavaPrinter_Old::print(Block *block) {
             auto printInType = new TupleType({TypedId("msg", STRING)});
             auto type = new FunctionType(printInType, VOID);
 
@@ -67,7 +67,7 @@ namespace langd {
             return symbol->second;
         }
 
-        Symbol JavaPrinter::getSymbol(string name) {
+        Symbol JavaPrinter_Old::getSymbol(string name) {
             return java::getSymbol(scope, name);
         }
 
@@ -84,11 +84,11 @@ namespace langd {
             return hasSymbol(scope->parent, name);
         }
 
-        bool JavaPrinter::hasSymbol(string name) {
+        bool JavaPrinter_Old::hasSymbol(string name) {
             return java::hasSymbol(scope, name);
         }
 
-        string JavaPrinter::getOrCreateStruct(TupleType *type) {
+        string JavaPrinter_Old::getOrCreateStruct(TupleType *type) {
             for (StructEntry entry: structs) {
                 if (*entry.type == *type) {
                     return entry.javaName;
@@ -104,19 +104,19 @@ namespace langd {
             return newName;
         }
 
-        bool JavaPrinter::isInt(Type *type) {
+        bool JavaPrinter_Old::isInt(Type *type) {
             return *type == *INT;
         }
 
-        bool JavaPrinter::isVoid(Type *type) {
+        bool JavaPrinter_Old::isVoid(Type *type) {
             return *type == *VOID;
         }
 
-        bool JavaPrinter::isString(Type *type) {
+        bool JavaPrinter_Old::isString(Type *type) {
             return *type == *STRING;
         }
 
-        string JavaPrinter::toJavaType(Type *type) {
+        string JavaPrinter_Old::toJavaType(Type *type) {
             IdReference *simple = dynamic_cast<IdReference *>(type);
             if (simple) {
                 if (simple->id == "String") {
@@ -138,11 +138,11 @@ namespace langd {
             return "unknown";
         }
 
-        string JavaPrinter::getNextId(string prefix) {
+        string JavaPrinter_Old::getNextId(string prefix) {
             return prefix + to_string(lastId++);
         }
 
-        void JavaPrinter::endOperation(Type *outputType) {
+        void JavaPrinter_Old::endOperation(Type *outputType) {
             symbolLastExpression.javaName = getNextId("id");
             symbolLastExpression.type = outputType;
             if (isVoid(outputType)) {
@@ -153,13 +153,13 @@ namespace langd {
             }
         }
 
-        void JavaPrinter::error() {
+        void JavaPrinter_Old::error() {
             symbolLastExpression.javaName = "unkown";
             symbolLastExpression.type = new IdReference("unknown");
             cerr << "//Error: ";
         }
 
-        bool JavaPrinter::printFunctionArguments(TupleType *type) {
+        bool JavaPrinter_Old::printFunctionArguments(TupleType *type) {
             *output << toJavaType(type) << " " << "input";
             //*output << toJavaType(member.type) << " " << member.id;
 
@@ -167,13 +167,13 @@ namespace langd {
         }
 
 
-        void JavaPrinter::visit(Block *block) {
+        void JavaPrinter_Old::visit(Block *block) {
             for (auto statement: block->expressions) {
                 statement->accept(this);
             }
         }
 
-        void JavaPrinter::visit(Assignment *assignment) {
+        void JavaPrinter_Old::visit(Assignment *assignment) {
             if (hasSymbol(assignment->id)) {
                 error();
                 cerr << assignment->id << " is already defined" << endl;
@@ -184,7 +184,7 @@ namespace langd {
             scope->symbols[assignment->id] = symbolLastExpression;
         }
 
-        void JavaPrinter::visit(TypeAssignment *assignment) {
+        void JavaPrinter_Old::visit(TypeAssignment *assignment) {
             if (hasSymbol(assignment->id)) {
                 error();
                 cerr << assignment->id << " is already defined" << endl;
@@ -196,7 +196,7 @@ namespace langd {
         }
 
 
-        void JavaPrinter::visit(PlusOp *plusOp) {
+        void JavaPrinter_Old::visit(PlusOp *plusOp) {
             plusOp->lhs->accept(this);
             Symbol lhs = symbolLastExpression;
 
@@ -218,7 +218,7 @@ namespace langd {
             *output << lhs.javaName << " + " << rhs.javaName << ";" << endl;
         }
 
-        void JavaPrinter::visit(MinusOp *minusOp) {
+        void JavaPrinter_Old::visit(MinusOp *minusOp) {
             minusOp->lhs->accept(this);
             Symbol lhs = symbolLastExpression;
 
@@ -239,7 +239,7 @@ namespace langd {
             *output << lhs.javaName << " - " << rhs.javaName << ";" << endl;
         }
 
-        void JavaPrinter::visit(TimesOp *timesOp) {
+        void JavaPrinter_Old::visit(TimesOp *timesOp) {
             timesOp->lhs->accept(this);
             Symbol lhs = symbolLastExpression;
 
@@ -260,7 +260,7 @@ namespace langd {
             *output << lhs.javaName << " * " << rhs.javaName << ";" << endl;
         }
 
-        void JavaPrinter::visit(Negation *negation) {
+        void JavaPrinter_Old::visit(Negation *negation) {
             negation->expression->accept(this);
             Symbol expr = symbolLastExpression;
 
@@ -274,17 +274,17 @@ namespace langd {
             *output << " -" << expr.javaName << ";" << endl;
         }
 
-        void JavaPrinter::visit(StringValue *negation) {
+        void JavaPrinter_Old::visit(StringValue *negation) {
             endOperation(STRING);
             *output << negation->value << ";" << endl;
         }
 
-        void JavaPrinter::visit(IntValue *intValue) {
+        void JavaPrinter_Old::visit(IntValue *intValue) {
             endOperation(INT);
             *output << intValue->value << ";" << endl;
         }
 
-        void JavaPrinter::visit(Tuple *tuple) {
+        void JavaPrinter_Old::visit(Tuple *tuple) {
             vector<string> javaNames;
             vector<TypedId> typedIds;
 
@@ -308,7 +308,7 @@ namespace langd {
             symbolLastExpression.type = tupleType;
         }
 
-        void JavaPrinter::visit(MemberSelection *memberSelection) {
+        void JavaPrinter_Old::visit(MemberSelection *memberSelection) {
             memberSelection->previousExpression->accept(this);
             TupleType *complexType = dynamic_cast<TupleType *>(symbolLastExpression.type);
 
@@ -331,7 +331,7 @@ namespace langd {
             cerr << "Complex type has no member " + memberSelection->id;
         }
 
-        void JavaPrinter::visit(FunctionDefinition *functionDefinition) {
+        void JavaPrinter_Old::visit(FunctionDefinition *functionDefinition) {
             FunctionEntry entry;
             entry.functionDefinition = functionDefinition;
             entry.javaBody = new stringbuf();
@@ -369,7 +369,7 @@ namespace langd {
             symbolLastExpression.type = new FunctionType(functionDefinition->inputType, entry.outputType);
         }
 
-        void JavaPrinter::visit(FunctionCall *functionCall) {
+        void JavaPrinter_Old::visit(FunctionCall *functionCall) {
             try {
                 Symbol functionSym = getSymbol(functionCall->id);
 
@@ -399,14 +399,14 @@ namespace langd {
             }
         }
 
-        void JavaPrinter::visit(InfixFunctionCall *infixFunctionCall) {
+        void JavaPrinter_Old::visit(InfixFunctionCall *infixFunctionCall) {
             infixFunctionCall->precedingExpression->accept(this);
             infixFunctionCall->parameter->accept(this);
 
             *output << "//Here comes the infix" << endl;
         }
 
-        void JavaPrinter::visit(IdReference *idReference) {
+        void JavaPrinter_Old::visit(IdReference *idReference) {
             try {
                 symbolLastExpression = getSymbol(idReference->id);
             } catch (UnknownSymbol e) {

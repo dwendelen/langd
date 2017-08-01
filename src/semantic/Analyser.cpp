@@ -4,6 +4,7 @@
 
 #include "Analyser.hpp"
 #include "Expression.hpp"
+#include "SemanticException.hpp"
 
 namespace langd {
     namespace semantic {
@@ -18,6 +19,8 @@ namespace langd {
         bool isVoid(Expression *expression) {
             return dynamic_cast<VoidType *>(expression->getType()) != nullptr;
         }
+
+        Analyser::Analyser() {}
 
         Block *Analyser::analyse(parser::Block *block) {
             block->accept(this);
@@ -61,7 +64,7 @@ namespace langd {
                 return;
             }
 
-            //TODO THROW EXCEPTION
+            throw SemanticException("Left and right hand side must both be Int or String");
         }
 
         void Analyser::visit(parser::MinusOp *minusOp) {
@@ -75,7 +78,7 @@ namespace langd {
                 return;
             }
 
-            //TODO THROW EXCEPTION
+            throw SemanticException("Left and right hand side must both be Int");
         }
 
         void Analyser::visit(parser::TimesOp *timesOp) {
@@ -89,7 +92,7 @@ namespace langd {
                 return;
             }
 
-            //TODO THROW EXCEPTION
+            throw SemanticException("Left and right hand side must both be Int");
         }
 
         void Analyser::visit(parser::Negation *negation) {
@@ -100,7 +103,7 @@ namespace langd {
                 return;
             }
 
-            //TODO THROW EXCEPTION
+            throw SemanticException("Right hand side must be Int");
         }
 
         void Analyser::visit(parser::StringValue *stringValue) {
@@ -120,7 +123,7 @@ namespace langd {
             vector<TupleElement> elements;
 
             for (auto assignment: construct->assignments) {
-                assignment->accept(this);
+                assignment->expression->accept(this);
                 elements.emplace_back(assignment->id, lastExpression);
             }
 
@@ -130,16 +133,19 @@ namespace langd {
         void Analyser::visit(parser::MemberSelection *memberSelection) {
             memberSelection->previousExpression->accept(this);
             auto tupleType = dynamic_cast<TupleType *>( lastExpression->getType());
-            if (!tupleType) {
-                //TODO EXCEPTION
+
+            if (tupleType == nullptr) {
+                throw SemanticException("Expression does not return a tuple");
             }
+
             for (auto member: tupleType->getMembers()) {
                 if (member.getName() == memberSelection->id) {
                     lastExpression = new MemberSelection(lastExpression, member);
                     return;
                 }
             }
-            //TODO EXCEPTION
+
+            throw SemanticException("No member " + memberSelection->id + " found");
         }
 
         Block *asBlock(Expression *expression) {
@@ -152,28 +158,32 @@ namespace langd {
 
         void Analyser::visit(parser::FunctionDefinition *functionDefinition) {
             symbolTable.pushScope();
+
             TupleType *input = mapTuple(functionDefinition->inputType);
+            for (TupleTypeMember member: input->getMembers()) {
+                symbolTable.registerVariable(new Variable(member.getName(), member.getType()));
+            }
 
             functionDefinition->body->accept(this);
             auto body = lastExpression;
-            symbolTable.popScope();
 
-            lastExpression = new FunctionDefinition(new FunctionType(input, lastExpression->getType()),
+            lastExpression = new FunctionDefinition(new FunctionType(input, body->getType()),
                                                     symbolTable.getClosure(), asBlock(body));
+            symbolTable.popScope();
         }
 
-        void Analyser::createFunctionCall(string name, Expression* parameters) {
+        void Analyser::createFunctionCall(string name, Expression *parameters) {
             auto function = symbolTable.getVariable(name);
             auto functionType = dynamic_cast<FunctionType *>(function->getType());
             if (functionType == nullptr) {
-                //TODO exception
+                throw SemanticException("You can not call a non-function");
             }
 
-            if(!functionType->isAssignableFrom(parameters->getType())) {
-                //TODO exception
+            if (!functionType->getInputType()->isAssignableFrom(parameters->getType())) {
+                throw SemanticException("The input is not compatible with the functions signature");
             }
 
-            lastExpression = new FunctionCall(name, parameters, functionType);
+            lastExpression = new FunctionCall(name, parameters, functionType->getOutputType());
         }
 
         void Analyser::visit(parser::FunctionCall *functionCall) {
@@ -189,23 +199,16 @@ namespace langd {
             infixFunctionCall->parameter->accept(this);
             auto parameters = lastExpression;
 
-            auto tuple = dynamic_cast<Tuple*> (parameters);
-            if(tuple == nullptr) {
-                vector<TupleElement> newElements = {TupleElement("", precedingExpression)};
-                for(TupleElement element: tuple->getElements()) {
-                    newElements.push_back(element);
-                }
-                createFunctionCall(infixFunctionCall->id, new Tuple(newElements));
-                return;
-            } else {
-                vector<TupleElement> newElements = {TupleElement("", precedingExpression)};
-                for(TupleElement element: tuple->getElements()) {
-                    newElements.push_back(element);
-                }
-                createFunctionCall(infixFunctionCall->id, new Tuple(newElements));
-                return;
+            auto tuple = dynamic_cast<Tuple *> (parameters);
+            if (tuple == nullptr) {
+                throw SemanticException("Infix function calls with non-tuples is not yet supported");
             }
-            //TODO EXCEPTION
+
+            vector<TupleElement> newElements = {TupleElement("", precedingExpression)};
+            for (TupleElement element: tuple->getElements()) {
+                newElements.push_back(element);
+            }
+            createFunctionCall(infixFunctionCall->id, new Tuple(newElements));
         }
 
         TupleType *Analyser::mapTuple(parser::TupleType *tupleType) {
@@ -228,8 +231,8 @@ namespace langd {
             if (auto functionType = dynamic_cast<parser::FunctionType *>(type)) {
                 auto inputType = mapType(functionType->inputType);
                 auto tupleInputType = dynamic_cast<TupleType *>(inputType);
-                if (!tupleInputType) {
-                    //TODO THROW EXCEPTION
+                if (tupleInputType == nullptr) {
+                    throw SemanticException("Non tuple input is not yet supported");
                 }
 
                 return new FunctionType(tupleInputType, mapType(functionType->outputType));
