@@ -96,9 +96,9 @@ namespace langd {
         };
 
         SymbolTable::SymbolTable(): innerScope(new DefaultScope(new NullScope())) {
-            registerType("String", new StringType());
-            registerType("Int", new IntegerType());
-            registerType("Void", new VoidType());
+            registerType("String", &STRING);
+            registerType("Int", &INTEGER);
+            registerType("Void", &VOID);
         }
 
         Variable *SymbolTable::getVariable(string name) {

@@ -19,9 +19,9 @@ namespace langd {
 
         class Variable {
         public:
-            Variable(string name, Type* type): name(name), type(type) {}
+            Variable(std::string name, Type* type): name(name), type(type) {}
 
-            string getName() {
+            std::string getName() {
                 return name;
             }
 
@@ -30,19 +30,19 @@ namespace langd {
             }
 
         private:
-            string name;
+            std::string name;
             Type* type;
         };
 
         class Scope {
         public:
-            virtual Variable* getVariable(string name) = 0;
-            virtual bool hasVariable(string name) = 0;
+            virtual Variable* getVariable(std::string name) = 0;
+            virtual bool hasVariable(std::string name) = 0;
             virtual void registerVariable(Variable *variable) = 0;
 
-            virtual Type* getType(string name) = 0;
-            virtual bool hasType(string name) = 0;
-            virtual void registerType(string name, Type* type) = 0;
+            virtual Type* getType(std::string name) = 0;
+            virtual bool hasType(std::string name) = 0;
+            virtual void registerType(std::string name, Type* type) = 0;
 
             virtual Scope *getParent() = 0;
         };
@@ -51,13 +51,13 @@ namespace langd {
         public:
             SymbolTable();
 
-            Variable* getVariable(string name);
-            bool hasVariable(string name);
+            Variable* getVariable(std::string name);
+            bool hasVariable(std::string name);
             void registerVariable(Variable *variable);
 
-            Type* getType(string name);
-            bool hasType(string name);
-            void registerType(string name, Type* type);
+            Type* getType(std::string name);
+            bool hasType(std::string name);
+            void registerType(std::string name, Type* type);
 
             void pushScope();
             void popScope();

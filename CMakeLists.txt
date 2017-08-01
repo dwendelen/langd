@@ -28,7 +28,11 @@ set(SRC
         src/semantic/SymbolTable.cpp
         src/semantic/SymbolTable.hpp
         src/semantic/SemanticException.cpp
-        src/semantic/SemanticException.hpp)
+        src/semantic/SemanticException.hpp
+        src/semantic/ExpressionVisitor.cpp
+        src/semantic/ExpressionVisitor.hpp
+        src/semantic/Type.cpp
+        src/semantic/Type.hpp)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/src

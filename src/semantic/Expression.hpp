@@ -8,24 +8,10 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-using namespace std;
+#include "Type.hpp"
 
 namespace langd {
     namespace semantic {
-        class Type;
-
-        class VoidType;
-
-        class StringType;
-
-        class IntegerType;
-
-        class TupleType;
-
-        class TupleTypeMember;
-
-        class FunctionType;
 
         class Closure;
 
@@ -34,6 +20,8 @@ namespace langd {
         class Block;
 
         class Assignment;
+
+        class VariableReference;
 
         class BinaryOperation;
 
@@ -61,62 +49,6 @@ namespace langd {
 
         class FunctionDefinition;
 
-        class Type {
-        public:
-            virtual ~Type();
-        };
-
-        class VoidType : public Type {
-
-        };
-
-        class StringType : public Type {
-
-        };
-
-        class IntegerType : public Type {
-
-        };
-
-        class TupleType : public Type {
-        public:
-            TupleType(vector<TupleTypeMember> members): members(members) {}
-
-            vector<TupleTypeMember> getMembers() {
-                return members;
-            }
-
-        private:
-            vector<TupleTypeMember> members;
-        };
-
-        class TupleTypeMember {
-        public:
-            TupleTypeMember(string name, Type* type): name(name), type(type) {}
-            string getName() {
-                return name;
-            }
-            Type* getType() {
-                return type;
-            }
-        private:
-            string name;
-            Type *type;
-        };
-
-
-
-        class FunctionType : public Type {
-        public:
-            FunctionType(TupleType* inputType, Type* outputType)
-                    : inputType(inputType), outputType(outputType) {}
-        private:
-            TupleType *inputType;
-            Type* outputType;
-        };
-
-
-
 
         class Expression {
         public:
@@ -126,21 +58,21 @@ namespace langd {
         class Block : public Expression {
 
         public:
-            explicit Block(vector<Expression*> expressions) : expressions(expressions) {}
+            explicit Block(std::vector<Expression*> expressions) : expressions(expressions) {}
 
             Type *getType() override {
                 return expressions.back()->getType();
             }
 
         private:
-            vector<Expression *> expressions;
+            std::vector<Expression *> expressions;
         };
 
         class Assignment : public Expression {
         public:
-            Assignment(string name, Expression *expression) : name(name), expression(expression) {}
+            Assignment(std::string name, Expression *expression) : name(name), expression(expression) {}
 
-            string getName() {
+            std::string getName() {
                 return name;
             }
 
@@ -152,15 +84,15 @@ namespace langd {
                 return expression->getType();
             }
         private:
-            string name;
+            std::string name;
             Expression *expression;
         };
 
         class VariableReference : public Expression {
         public:
-            VariableReference(string name, Type* type): name(name), type(type) {}
+            VariableReference(std::string name, Type* type): name(name), type(type) {}
 
-            string getName() {
+            std::string getName() {
                 return name;
             }
 
@@ -169,7 +101,7 @@ namespace langd {
             }
 
         private:
-            string name;
+            std::string name;
             Type *type;
         };
 
@@ -197,7 +129,7 @@ namespace langd {
             }
 
             IntegerType *getType() override {
-                return new IntegerType();
+                return &INTEGER;
             }
         };
 
@@ -208,7 +140,7 @@ namespace langd {
             }
 
             IntegerType *getType() override {
-                return new IntegerType();
+                return &INTEGER;
             }
         };
 
@@ -219,7 +151,7 @@ namespace langd {
             }
 
             IntegerType *getType() override {
-                return new IntegerType();
+                return &INTEGER;
             }
         };
 
@@ -230,7 +162,7 @@ namespace langd {
             }
 
             StringType *getType() override {
-                return new StringType();
+                return &STRING;
             }
         };
 
@@ -241,7 +173,7 @@ namespace langd {
             }
 
             IntegerType *getType() override {
-                return new IntegerType();
+                return &INTEGER;
             }
 
         private:
@@ -251,15 +183,19 @@ namespace langd {
         class StringConstant : public Expression {
 
         public:
-            explicit StringConstant(string value) : value(value) {
+            explicit StringConstant(std::string value) : value(value) {
 
             }
 
+            std::string getValue() {
+                return value;
+            }
+
             StringType *getType() override {
-                return new StringType();
+                return &STRING;
             };
         private:
-            string value;
+            std::string value;
         };
 
         class IntConstant : public Expression {
@@ -268,7 +204,7 @@ namespace langd {
             explicit IntConstant(int value) : value(value) {}
 
             IntegerType *getType() override {
-                return new IntegerType();
+                return &INTEGER;
             }
 
         private:
@@ -277,19 +213,19 @@ namespace langd {
 
         class Tuple : public Expression {
         public:
-            Tuple(vector<TupleElement> elements): elements(elements) {}
+            Tuple(std::vector<TupleElement> elements): elements(elements) {}
 
             TupleType *getType() override {
                 return nullptr;
             }
 
         private:
-            vector<TupleElement> elements;
+            std::vector<TupleElement> elements;
         };
 
         class TupleElement {
         public:
-            TupleElement(string name, Expression* expression) {}
+            TupleElement(std::string name, Expression* expression) {}
         };
 
         class MemberSelection : public Expression {
@@ -313,7 +249,7 @@ namespace langd {
 
         class FunctionCall : public Expression {
         public:
-            FunctionCall(string function, Expression* input, FunctionType* type)
+            FunctionCall(std::string function, Expression* input, FunctionType* type)
                     : function(function), input(input), type(type) {}
 
             FunctionType *getType() override {
@@ -321,7 +257,7 @@ namespace langd {
             }
 
         private:
-            string function;
+            std::string function;
             FunctionType* type;
             Expression* input;
         };
