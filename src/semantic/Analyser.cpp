@@ -162,24 +162,49 @@ namespace langd {
                                                     symbolTable.getClosure(), asBlock(body));
         }
 
-        void Analyser::visit(parser::FunctionCall *functionCall) {
-            auto function = symbolTable.getVariable(functionCall->id);
+        void Analyser::createFunctionCall(string name, Expression* parameters) {
+            auto function = symbolTable.getVariable(name);
             auto functionType = dynamic_cast<FunctionType *>(function->getType());
             if (functionType == nullptr) {
                 //TODO exception
             }
 
-            functionCall->parameter->accept(this);
-            auto parameterExpression = lastExpression;
-
-            if(!functionType->isAssignableFrom(parameterExpression->getType())) {
+            if(!functionType->isAssignableFrom(parameters->getType())) {
                 //TODO exception
             }
 
-            lastExpression = new FunctionCall(functionCall->id, parameterExpression, functionType);
+            lastExpression = new FunctionCall(name, parameters, functionType);
+        }
+
+        void Analyser::visit(parser::FunctionCall *functionCall) {
+            functionCall->parameter->accept(this);
+
+            createFunctionCall(functionCall->id, lastExpression);
         }
 
         void Analyser::visit(parser::InfixFunctionCall *infixFunctionCall) {
+            infixFunctionCall->precedingExpression->accept(this);
+            auto precedingExpression = lastExpression;
+
+            infixFunctionCall->parameter->accept(this);
+            auto parameters = lastExpression;
+
+            auto tuple = dynamic_cast<Tuple*> (parameters);
+            if(tuple == nullptr) {
+                vector<TupleElement> newElements = {TupleElement("", precedingExpression)};
+                for(TupleElement element: tuple->getElements()) {
+                    newElements.push_back(element);
+                }
+                createFunctionCall(infixFunctionCall->id, new Tuple(newElements));
+                return;
+            } else {
+                vector<TupleElement> newElements = {TupleElement("", precedingExpression)};
+                for(TupleElement element: tuple->getElements()) {
+                    newElements.push_back(element);
+                }
+                createFunctionCall(infixFunctionCall->id, new Tuple(newElements));
+                return;
+            }
             //TODO EXCEPTION
         }
 

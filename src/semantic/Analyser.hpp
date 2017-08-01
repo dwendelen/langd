@@ -43,6 +43,8 @@ namespace langd {
 
             void visit(parser::FunctionDefinition *functionDefinition) override;
 
+            void createFunctionCall(string name, Expression* parameters);
+
             void visit(parser::FunctionCall *functionCall) override;
 
             void visit(parser::InfixFunctionCall *infixFunctionCall) override;
@@ -53,7 +55,6 @@ namespace langd {
 
             Expression* lastExpression;
             SymbolTable symbolTable;
-
         };
 
     }
