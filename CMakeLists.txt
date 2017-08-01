@@ -16,10 +16,19 @@ ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
 set(SRC
         src/main.cpp
-        src/parser/ast.cpp
+        src/parser/ast.hpp
         src/printer.cpp
+        src/printer.hpp
         src/java/java_printer.cpp
-        )
+        src/java/java_printer.hpp
+        src/semantic/Expression.cpp
+        src/semantic/Expression.hpp
+        src/semantic/Analyser.cpp
+        src/semantic/Analyser.hpp
+        src/semantic/SymbolTable.cpp
+        src/semantic/SymbolTable.hpp
+        src/semantic/SemanticException.cpp
+        src/semantic/SemanticException.hpp)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/src
