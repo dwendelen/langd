@@ -17,7 +17,10 @@ namespace langd {
         void JavaPrinter::print(semantic::Block *block) {
             cout << "class LangD {" << endl;
             cout << "    public static void main(String[] args) {" << endl;
+
             block->accept(this);
+
+            cout << "        System.out.println(String.valueOf(" << lastValue << "));" << endl;
             cout << "    }" << endl;
 
             prefix = "            ";
