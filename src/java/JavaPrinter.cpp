@@ -126,7 +126,15 @@ namespace langd {
 
             functions.emplace_back(functionJavaName, expression);
 
-            print(expression->getType(), "func", "new ", functionJavaName, "()");
+            auto funcName = resolveName("func");
+            cout << prefix << functionJavaName << " " << funcName
+                 << " = new " << functionJavaName << "();" << endl;
+
+            for (auto variable: expression->getClosure()->getVariables()) {
+                cout << prefix << funcName << "." << variable->getName() << " = " << variable->getName() << ";" << endl;
+            }
+
+            lastValue = funcName;
         }
 
         void
@@ -167,6 +175,13 @@ namespace langd {
 
                 cout << "    private static class " << javaName;
                 cout << " implements " << typeMapper->map(definition->getType()) << " {" << endl;
+
+                for (auto variable: definition->getClosure()->getVariables()) {
+                    cout << "        public " << typeMapper->map(variable->getType()) << " "
+                         << variable->getName() << ";" << endl;
+                }
+
+                cout << endl;
 
                 cout << "        public " << typeMapper->map(type->getOutputType());
                 cout << " apply(";

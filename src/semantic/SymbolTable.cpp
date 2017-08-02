@@ -27,6 +27,10 @@ namespace langd {
                 throw logic_error("You can not register a type");
             }
 
+            Closure* getClosure() override {
+                throw logic_error("Null scope has no closure");
+            }
+            
             Scope *getParent() override {
                 return this;
             }
@@ -39,7 +43,9 @@ namespace langd {
             Variable *getVariable(string name) override {
                 auto variable = variables.find(name);
                 if (variable == variables.end()) {
-                    return parent->getVariable(name);
+                    auto var = parent->getVariable(name);
+                    closure->addVariable(var);
+                    return var;
                 }
                 return variable->second;
             }
@@ -66,6 +72,11 @@ namespace langd {
                 types[name] = type;
             }
 
+            Closure* getClosure() override {
+                return closure;
+            }
+
+
             Scope *getParent() override {
                 return parent;
             }
@@ -74,6 +85,7 @@ namespace langd {
             map<string, Type *> types;
 
             Scope *parent;
+            Closure *closure = new Closure();
 
             bool hasVariable(string name) {
                 return variables.count(name) != 0;
@@ -99,7 +111,7 @@ namespace langd {
         }
 
         Closure *SymbolTable::getClosure() {
-            return new Closure();
+            return innerScope->getClosure();
         }
 
         Type *SymbolTable::getType(string name) {

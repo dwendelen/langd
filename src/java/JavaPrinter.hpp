@@ -84,8 +84,6 @@ namespace langd {
             void printFunctionTypes();
 
             void printFunctions();
-
-            void printPrintFunctions();
         };
 
         class CompositeTypeMapper : public semantic::TypeVisitor {

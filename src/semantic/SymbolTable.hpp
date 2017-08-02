@@ -8,6 +8,7 @@
 #include <string>
 #include <map>
 #include "Expression.hpp"
+#include "Closure.hpp"
 
 namespace langd {
     namespace semantic {
@@ -42,6 +43,7 @@ namespace langd {
             virtual Type* getType(std::string name) = 0;
             virtual void registerType(std::string name, Type* type) = 0;
 
+            virtual Closure* getClosure() = 0;
             virtual Scope *getParent() = 0;
         };
 

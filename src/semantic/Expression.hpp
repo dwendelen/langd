@@ -10,6 +10,7 @@
 #include <vector>
 #include "Type.hpp"
 #include "ExpressionVisitor.hpp"
+#include "SymbolTable.hpp"
 
 namespace langd {
     namespace semantic {
@@ -52,7 +53,8 @@ namespace langd {
         class Expression {
         public:
             virtual Type *getType() = 0;
-            virtual void accept(ExpressionVisitor* visitor) = 0;
+
+            virtual void accept(ExpressionVisitor *visitor) = 0;
         };
 
         class Block : public Expression {
@@ -240,6 +242,7 @@ namespace langd {
             void accept(ExpressionVisitor *visitor) override {
                 visitor->visit(this);
             }
+
         private:
             std::string value;
         };
@@ -267,11 +270,13 @@ namespace langd {
 
         class TupleElement {
         public:
-            TupleElement(std::string name, Expression *expression): name(name), expression(expression) {}
+            TupleElement(std::string name, Expression *expression) : name(name), expression(expression) {}
+
             std::string getName() {
                 return name;
             }
-            Expression* getExpression() {
+
+            Expression *getExpression() {
                 return expression;
             }
 
@@ -330,9 +335,6 @@ namespace langd {
             TupleTypeMember element;
         };
 
-        class Closure {
-        private:
-        };
 
         class FunctionCall : public Expression {
         public:
@@ -363,7 +365,8 @@ namespace langd {
 
         class FunctionDefinition : public Expression {
         public:
-            FunctionDefinition(FunctionType *type, Closure *closure, Block *body) : type(type), body(body) {}
+            FunctionDefinition(FunctionType *type, Closure *closure, Block *body)
+                    : type(type), closure(closure), body(body) {}
 
             Block *getBody() {
                 return body;
@@ -377,8 +380,13 @@ namespace langd {
                 visitor->visit(this);
             }
 
+            Closure *getClosure() {
+                return closure;
+            }
+
         private:
             FunctionType *type;
+            Closure *closure;
             Block *body;
         };
     }
