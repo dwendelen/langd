@@ -16,10 +16,6 @@ namespace langd {
             return STRING.isAssignableFrom(expression->getType());
         }
 
-        bool isVoid(Expression *expression) {
-            return dynamic_cast<VoidType *>(expression->getType()) != nullptr;
-        }
-
         Analyser::Analyser() {}
 
         Block *Analyser::analyse(parser::Block *block) {
