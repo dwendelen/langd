@@ -26,8 +26,6 @@ namespace langd {
             printTupleTypes();
             printFunctionTypes();
 
-            printPrintFunctions();
-
             cout << "}" << endl;
         }
 

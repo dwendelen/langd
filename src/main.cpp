@@ -1,7 +1,6 @@
 #include "parser/ast.hpp"
 #include "parser.hpp"
 #include "printer.hpp"
-#include "java/java_printer.hpp"
 #include <iostream>
 #include <semantic/Analyser.hpp>
 #include <java/JavaPrinter.hpp>
@@ -26,8 +25,6 @@ int main() {
         
         JavaPrinter* javaPrinter = new JavaPrinter();
         javaPrinter->print(analysedBlock);
-        //JavaPrinter_Old* javaPrinter = new JavaPrinter_Old();
-        //javaPrinter->print(parsedProgram);
     }
     return result;
 }
