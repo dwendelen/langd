@@ -339,6 +339,14 @@ namespace langd {
             FunctionCall(std::string function, Expression *input, Type *type)
                     : function(function), input(input), type(type) {}
 
+            std::string getFunction() {
+                return function;
+            }
+
+            Expression *getInput() {
+                return input;
+            }
+
             Type *getType() override {
                 return type;
             }
@@ -355,7 +363,11 @@ namespace langd {
 
         class FunctionDefinition : public Expression {
         public:
-            FunctionDefinition(FunctionType *type, Closure *closure, Block *body) : type(type) {}
+            FunctionDefinition(FunctionType *type, Closure *closure, Block *body) : type(type), body(body) {}
+
+            Block *getBody() {
+                return body;
+            }
 
             FunctionType *getType() override {
                 return type;
@@ -367,6 +379,7 @@ namespace langd {
 
         private:
             FunctionType *type;
+            Block *body;
         };
     }
 }

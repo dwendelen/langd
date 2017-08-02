@@ -3,13 +3,14 @@
 //
 
 #include <iostream>
+#include <sstream>
 #include "JavaPrinter.hpp"
 
 using namespace std;
 
 namespace langd {
     namespace java {
-        JavaPrinter::JavaPrinter() : typeMapper(new TypeMapper){
+        JavaPrinter::JavaPrinter() : typeMapper(new TypeMapper) {
 
         }
 
@@ -18,6 +19,15 @@ namespace langd {
             cout << "    public static void main(String[] args) {" << endl;
             block->accept(this);
             cout << "    }" << endl;
+
+            prefix = "            ";
+            printFunctions();
+
+            printTupleTypes();
+            printFunctionTypes();
+
+            printPrintFunctions();
+
             cout << "}" << endl;
         }
 
@@ -30,7 +40,8 @@ namespace langd {
         void JavaPrinter::visit(langd::semantic::Assignment *assignment) {
             assignment->getExpression()->accept(this);
 
-            print(assignment->getType(), assignment->getName(), lastValue);
+            cout << prefix << mapType(assignment->getType()) << " " << assignment->getName() << " = ";
+            cout << lastValue << ";" << endl;
         }
 
         void JavaPrinter::visit(langd::semantic::VariableReference *variableReference) {
@@ -88,7 +99,18 @@ namespace langd {
         }
 
         void JavaPrinter::visit(langd::semantic::Tuple *expression) {
+            auto javaType = mapType(expression->getType());
+            auto javaName = resolveName("tuple");
 
+            cout << prefix << javaType << " " << javaName << " = new " << javaType << "();" << endl;
+            for (int i = 0; i < expression->getElements().size(); i++) {
+                auto element = expression->getElements()[i];
+
+                element.getExpression()->accept(this);
+                cout << prefix << javaName << ".e" << i << " = " << lastValue << ";" << endl;
+            }
+
+            lastValue = javaName;
         }
 
         void JavaPrinter::visit(langd::semantic::MemberSelection *expression) {
@@ -97,17 +119,23 @@ namespace langd {
         }
 
         void JavaPrinter::visit(langd::semantic::FunctionCall *expression) {
-
+            expression->getInput()->accept(this);
+            print(expression->getType(), "result", expression->getFunction(), ".apply(", lastValue, ")");
         }
 
         void JavaPrinter::visit(langd::semantic::FunctionDefinition *expression) {
+            auto functionJavaName = resolveName("Function");
 
+            functions.emplace_back(functionJavaName, expression);
+
+            print(expression->getType(), "func", "new ", functionJavaName, "()");
         }
 
-        void JavaPrinter::print(semantic::Type *type, string name, string code, string code2, string code3) {
+        void
+        JavaPrinter::print(semantic::Type *type, string name, string code, string code2, string code3, string code4) {
             lastValue = resolveName(name);
-            cout << "        " << mapType(type) << " " << lastValue << " = ";
-            cout << code << code2 << code3 << ";" << endl;
+            cout << prefix << mapType(type) << " " << lastValue << " = ";
+            cout << code << code2 << code3 << code4 << ";" << endl;
         }
 
         std::string JavaPrinter::mapType(semantic::Type *type) {
@@ -133,6 +161,65 @@ namespace langd {
             return true;
         }
 
+        void JavaPrinter::printFunctions() {
+            for (auto function: functions) {
+                auto javaName = function.first;
+                auto definition = function.second;
+                auto type = definition->getType();
+
+                cout << "    private static class " << javaName;
+                cout << " implements " << typeMapper->map(definition->getType()) << " {" << endl;
+
+                cout << "        public " << typeMapper->map(type->getOutputType());
+                cout << " apply(";
+                cout << typeMapper->map(type->getInputType());
+                cout << " _input) {" << endl;
+
+                auto members = type->getInputType()->getMembers();
+                for (int i = 0; i < members.size(); i++) {
+                    auto member = members[i];
+
+                    cout << "            " << typeMapper->map(member.getType()) << " " << member.getName()
+                         << " = _input.e" << to_string(i) << ";" << endl;
+                }
+
+                definition->getBody()->accept(this);
+
+                cout << "            return " << lastValue << ";" << endl;
+                cout << "        }" << endl;
+
+                cout << "    }" << endl;
+            }
+        }
+
+        void JavaPrinter::printTupleTypes() {
+            for (auto tuple: typeMapper->getTupleTypes()) {
+                cout << "    private static class " << tuple.first << " {" << endl;
+                auto members = tuple.second->getMembers();
+                for (int i = 0; i < members.size(); i++) {
+                    cout << "        public " << typeMapper->map(members[i].getType()) << " e" << i << ";" << endl;
+                }
+                cout << "    }" << endl;
+            }
+        }
+
+        void JavaPrinter::printFunctionTypes() {
+            for (auto function: typeMapper->getFunctionTypes()) {
+                auto type = function.second;
+
+                cout << "    private static interface " << function.first << " {" << endl;
+
+                cout << "        public " << typeMapper->map(type->getOutputType());
+                cout << " apply(";
+                cout << typeMapper->map(type->getInputType());
+                cout << " _input);" << endl;
+
+                cout << "    }" << endl;
+            }
+        }
+
+        TypeMapper::TypeMapper() : compositeTypeMapper(new CompositeTypeMapper) {}
+
         string TypeMapper::map(semantic::Type *type) {
             type->accept(this);
             return javaType;
@@ -151,11 +238,61 @@ namespace langd {
         }
 
         void TypeMapper::visit(semantic::TupleType *type) {
-            javaType = "todo";
+            javaType = compositeTypeMapper->map(type);
         }
 
         void TypeMapper::visit(semantic::FunctionType *type) {
-            javaType = "todo";
+            javaType = compositeTypeMapper->map(type);
+        }
+
+
+        std::string CompositeTypeMapper::map(semantic::Type *type) {
+            javaName = "";
+            type->accept(this);
+            return javaName;
+        }
+
+        void CompositeTypeMapper::visit(semantic::VoidType *type) {
+            javaName += "V";
+        }
+
+        void CompositeTypeMapper::visit(semantic::StringType *type) {
+            javaName += "S";
+        }
+
+        void CompositeTypeMapper::visit(semantic::IntegerType *type) {
+            javaName += "I";
+        }
+
+        void CompositeTypeMapper::visit(semantic::TupleType *type) {
+            auto javaNameBeforeThisTuple = javaName;
+            javaName = "T" + to_string(type->getMembers().size());
+            for (auto member: type->getMembers()) {
+                javaName += "_";
+                member.getType()->accept(this);
+            }
+
+            auto javaNameOfThisTuple = javaName;
+            if (tuples.count(javaNameOfThisTuple) == 0) {
+                tuples[javaNameOfThisTuple] = type;
+            }
+
+            javaName = javaNameBeforeThisTuple + javaNameOfThisTuple;
+        }
+
+        void CompositeTypeMapper::visit(semantic::FunctionType *type) {
+            auto javaNameBeforeThisFunction = javaName;
+            javaName = "F_";
+            type->getInputType()->accept(this);
+            javaName += "_";
+            type->getOutputType()->accept(this);
+
+            auto javaNameOfThisFunction = javaName;
+            if (functions.count(javaNameOfThisFunction) == 0) {
+                functions[javaNameOfThisFunction] = type;
+            }
+
+            javaName = javaNameBeforeThisFunction + javaNameOfThisFunction;
         }
     }
 }
