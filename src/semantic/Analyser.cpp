@@ -122,6 +122,7 @@ namespace langd {
         void Analyser::visit(parser::Tuple *construct) {
             vector<TupleElement> elements;
 
+            //TODO CHECK FOR DOUBLES
             for (auto assignment: construct->assignments) {
                 assignment->expression->accept(this);
                 elements.emplace_back(assignment->id, lastExpression);
@@ -212,6 +213,7 @@ namespace langd {
         }
 
         TupleType *Analyser::mapTuple(parser::TupleType *tupleType) {
+            //TODO CHECK FOR DOUBLES
             vector<TupleTypeMember> members;
             for (auto member: tupleType->members) {
                 members.emplace_back(member.id, mapType(member.type));
